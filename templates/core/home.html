@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="p-4 p-md-5 bg-white rounded-3 shadow-sm">
+    <h1 class="h3 mb-3">Здравствуйте, {{ user.first_name|default:user.username }}!</h1>
+    <p class="lead mb-0">Добро пожаловать в систему учёта показателей НИР кафедры.</p>
+</div>
+{% endblock %}
