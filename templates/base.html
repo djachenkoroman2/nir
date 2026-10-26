@@ -17,6 +17,14 @@
             </button>
             <div class="collapse navbar-collapse" id="mainNav">
                 <ul class="navbar-nav me-auto">
+                    {% url 'staff:teacher_list' as teachers_url %}
+                    {% url 'research:project_list' as research_url %}
+                    <li class="nav-item">
+                        <a class="nav-link{% if teachers_url in request.path %} active{% endif %}" href="{{ teachers_url }}">Преподаватели</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if research_url in request.path %} active{% endif %}" href="{{ research_url }}">НИОКР</a>
+                    </li>
                     {% if user.is_staff %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Администрирование</a></li>
                     {% endif %}
@@ -34,6 +42,12 @@
 </nav>
 
 <main class="container py-4 flex-grow-1">
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+        </div>
+    {% endfor %}
     {% block content %}{% endblock %}
 </main>
 

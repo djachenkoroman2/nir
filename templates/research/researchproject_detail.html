@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ researchproject.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'research:project_list' %}">НИОКР</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ researchproject.title|truncatechars:60 }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <h1 class="h3 mb-0">{{ researchproject.title }}</h1>
+    {% if user.is_staff %}
+        <div class="d-flex gap-2">
+            {% if perms.research.change_researchproject %}<a href="{% url 'research:project_update' researchproject.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
+            {% if perms.research.delete_researchproject %}<a href="{% url 'research:project_delete' researchproject.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Период выполнения</dt>
+            <dd class="col-sm-8">{{ researchproject.start_date|date:'d.m.Y' }} — {{ researchproject.end_date|date:'d.m.Y'|default:'н. в.' }}</dd>
+            <dt class="col-sm-4">Статус</dt>
+            <dd class="col-sm-8 mb-0"><span class="badge {{ researchproject.status_badge }}">{{ researchproject.get_status_display }}</span></dd>
+        </dl>
+    </div>
+</div>
+
+<h2 class="h5">Участники</h2>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for membership in memberships %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    <a href="{{ membership.teacher.get_absolute_url }}">{{ membership.teacher.full_name }}</a>
+                    <span class="text-muted small">, {{ membership.teacher.get_position_display }}</span>
+                </span>
+                <span class="badge {% if membership.role == membership.Role.LEADER %}text-bg-primary{% else %}text-bg-light{% endif %}">{{ membership.get_role_display }}</span>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Участники не указаны.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     # Приложения проекта
     'apps.accounts',
     'apps.core',
+    'apps.staff',
+    'apps.research',
 ]
 
 MIDDLEWARE = [

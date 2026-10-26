@@ -9,5 +9,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', auth_views.LoginView.as_view(redirect_authenticated_user=True), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('teachers/', include('apps.staff.urls')),
+    path('research/', include('apps.research.urls')),
     path('', include('apps.core.urls')),
 ]

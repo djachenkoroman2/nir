@@ -1,8 +1,27 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="p-4 p-md-5 bg-white rounded-3 shadow-sm">
+<div class="p-4 p-md-5 bg-white rounded-3 shadow-sm mb-4">
     <h1 class="h3 mb-3">Здравствуйте, {{ user.first_name|default:user.username }}!</h1>
     <p class="lead mb-0">Добро пожаловать в систему учёта показателей НИР кафедры.</p>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-md-6">
+        <a href="{% url 'staff:teacher_list' %}" class="card h-100 text-decoration-none shadow-sm">
+            <div class="card-body">
+                <h2 class="h5 card-title">Преподаватели</h2>
+                <p class="card-text text-muted mb-0">Работают на кафедре: {{ teacher_count }}</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-md-6">
+        <a href="{% url 'research:project_list' %}" class="card h-100 text-decoration-none shadow-sm">
+            <div class="card-body">
+                <h2 class="h5 card-title">НИОКР</h2>
+                <p class="card-text text-muted mb-0">Всего: {{ project_count }}, выполняются: {{ active_project_count }}</p>
+            </div>
+        </a>
+    </div>
 </div>
 {% endblock %}

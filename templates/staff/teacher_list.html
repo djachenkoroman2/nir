@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Преподаватели — {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Преподаватели</h1>
+    {% if user.is_staff and perms.staff.add_teacher %}
+        <a href="{% url 'staff:teacher_create' %}" class="btn btn-primary">Добавить преподавателя</a>
+    {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-12 col-md-6">
+        <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Поиск по ФИО" aria-label="Поиск по ФИО">
+    </div>
+    <div class="col-8 col-md-4">
+        <select name="active" class="form-select" aria-label="Статус">
+            <option value="" {% if active == '' %}selected{% endif %}>Все</option>
+            <option value="1" {% if active == '1' %}selected{% endif %}>Работают на кафедре</option>
+            <option value="0" {% if active == '0' %}selected{% endif %}>Не работают</option>
+        </select>
+    </div>
+    <div class="col-4 col-md-2 d-grid">
+        <button type="submit" class="btn btn-outline-primary">Найти</button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>ФИО</th>
+                <th>Должность</th>
+                <th class="d-none d-md-table-cell">Учёная степень</th>
+                <th class="d-none d-md-table-cell">Учёное звание</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for teacher in teacher_list %}
+                <tr>
+                    <td>
+                        <a href="{{ teacher.get_absolute_url }}">{{ teacher.full_name }}</a>
+                        {% if not teacher.is_active %}<span class="badge text-bg-secondary ms-1">не работает</span>{% endif %}
+                    </td>
+                    <td>{{ teacher.get_position_display }}</td>
+                    <td class="d-none d-md-table-cell">{{ teacher.get_degree_display }}</td>
+                    <td class="d-none d-md-table-cell">{{ teacher.get_academic_title_display }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4" class="text-center text-muted py-4">Преподаватели не найдены.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'includes/pagination.html' %}
+{% endblock %}

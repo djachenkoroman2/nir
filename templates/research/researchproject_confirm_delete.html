@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Удаление НИОКР — {{ block.super }}{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Удаление НИОКР</h1>
+<div class="card shadow-sm border-danger">
+    <div class="card-body">
+        <p>Удалить НИОКР <strong>«{{ object.title }}»</strong> вместе со списком участников? Это действие нельзя отменить.</p>
+        <form method="post" class="d-flex gap-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Удалить</button>
+            <a href="{{ object.get_absolute_url }}" class="btn btn-outline-secondary">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
