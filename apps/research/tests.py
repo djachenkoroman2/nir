@@ -6,22 +6,10 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.core.testing import formset_data
 from apps.staff.tests import make_editor, make_teacher
 
 from .models import Participant, ResearchProject
-
-
-def formset_data(rows, initial=0):
-    data = {
-        'memberships-TOTAL_FORMS': str(len(rows)),
-        'memberships-INITIAL_FORMS': str(initial),
-        'memberships-MIN_NUM_FORMS': '0',
-        'memberships-MAX_NUM_FORMS': '1000',
-    }
-    for index, row in enumerate(rows):
-        for key, value in row.items():
-            data[f'memberships-{index}-{key}'] = value
-    return data
 
 
 class ResearchProjectModelTests(TestCase):
@@ -94,7 +82,7 @@ class ResearchProjectEditTests(TestCase):
     def test_editor_creates_project_with_participants(self):
         data = {'title': 'Новая НИОКР', 'start_date': '2026-02-01', 'end_date': '2026-12-31',
                 'status': ResearchProject.Status.IN_PROGRESS}
-        data.update(formset_data([
+        data.update(formset_data('memberships', [
             {'teacher': self.leader.pk, 'role': Participant.Role.LEADER},
             {'teacher': self.member.pk, 'role': Participant.Role.MEMBER},
             {'teacher': '', 'role': Participant.Role.MEMBER},
@@ -109,7 +97,7 @@ class ResearchProjectEditTests(TestCase):
         project = ResearchProject.objects.create(title='Старое название', start_date='2026-01-01')
         membership = Participant.objects.create(project=project, teacher=self.leader)
         data = {'title': 'Новое название', 'start_date': '2026-01-01', 'status': ResearchProject.Status.COMPLETED}
-        data.update(formset_data([
+        data.update(formset_data('memberships', [
             {'id': membership.pk, 'teacher': self.leader.pk, 'role': Participant.Role.LEADER},
         ], initial=1))
         response = self.client.post(reverse('research:project_update', args=[project.pk]), data)
@@ -120,7 +108,7 @@ class ResearchProjectEditTests(TestCase):
 
     def test_duplicate_participant_in_form_is_rejected(self):
         data = {'title': 'Дубли', 'start_date': '2026-01-01', 'status': ResearchProject.Status.PLANNED}
-        data.update(formset_data([
+        data.update(formset_data('memberships', [
             {'teacher': self.leader.pk, 'role': Participant.Role.LEADER},
             {'teacher': self.leader.pk, 'role': Participant.Role.MEMBER},
         ]))
@@ -132,7 +120,7 @@ class ResearchProjectEditTests(TestCase):
     def test_invalid_dates_in_form_are_rejected(self):
         data = {'title': 'Даты', 'start_date': '2026-05-01', 'end_date': '2026-04-01',
                 'status': ResearchProject.Status.PLANNED}
-        data.update(formset_data([]))
+        data.update(formset_data('memberships', []))
         response = self.client.post(reverse('research:project_create'), data)
         self.assertContains(response, 'Дата окончания не может быть раньше даты начала.')
         self.assertFalse(ResearchProject.objects.filter(title='Даты').exists())

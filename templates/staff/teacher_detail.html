@@ -1,6 +1,53 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ teacher.short_name }} — {{ block.super }}{% endblock %}
+{% block title %}{{ teacher.short_name }} — {{ block.super }}
+<h2 class="h5 mt-4">Публикации <span class="text-muted fw-normal">({{ publications|length }})</span></h2>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for publication in publications %}
+            <li class="list-group-item">
+                <a href="{{ publication.get_absolute_url }}">{{ publication.title }}</a>
+                <div class="small text-muted">{{ publication.authors_display }}. {{ publication.imprint }}</div>
+                {% if publication.indexing %}<div class="mt-1">{% include 'includes/indexing_badges.html' %}</div>{% endif %}
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Публикаций нет.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<h2 class="h5 mt-4">Результаты интеллектуальной деятельности <span class="text-muted fw-normal">({{ intellectual_properties|length }})</span></h2>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for item in intellectual_properties %}
+            <li class="list-group-item">
+                <a href="{{ item.get_absolute_url }}">{{ item.title }}</a>
+                <div class="small text-muted">{{ item.get_kind_display|capfirst }} № {{ item.number }} от {{ item.registration_date|date:'d.m.Y' }}</div>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">РИД нет.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<h2 class="h5 mt-4">Доклады на конференциях <span class="text-muted fw-normal">({{ reports|length }})</span></h2>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for report in reports %}
+            <li class="list-group-item">
+                {{ report.title }}
+                <div class="small text-muted">
+                    {{ report.get_form_display|capfirst }} доклад,
+                    <a href="{{ report.conference.get_absolute_url }}">{{ report.conference }}</a>,
+                    {{ report.conference.start_date|date:'Y' }}
+                </div>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Докладов нет.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb">
@@ -62,5 +109,52 @@
             </tbody>
         </table>
     </div>
+</div>
+
+<h2 class="h5 mt-4">Публикации <span class="text-muted fw-normal">({{ publications|length }})</span></h2>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for publication in publications %}
+            <li class="list-group-item">
+                <a href="{{ publication.get_absolute_url }}">{{ publication.title }}</a>
+                <div class="small text-muted">{{ publication.authors_display }}. {{ publication.imprint }}</div>
+                {% if publication.indexing %}<div class="mt-1">{% include 'includes/indexing_badges.html' %}</div>{% endif %}
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Публикаций нет.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<h2 class="h5 mt-4">Результаты интеллектуальной деятельности <span class="text-muted fw-normal">({{ intellectual_properties|length }})</span></h2>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for item in intellectual_properties %}
+            <li class="list-group-item">
+                <a href="{{ item.get_absolute_url }}">{{ item.title }}</a>
+                <div class="small text-muted">{{ item.get_kind_display|capfirst }} № {{ item.number }} от {{ item.registration_date|date:'d.m.Y' }}</div>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">РИД нет.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<h2 class="h5 mt-4">Доклады на конференциях <span class="text-muted fw-normal">({{ reports|length }})</span></h2>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for report in reports %}
+            <li class="list-group-item">
+                {{ report.title }}
+                <div class="small text-muted">
+                    {{ report.get_form_display|capfirst }} доклад,
+                    <a href="{{ report.conference.get_absolute_url }}">{{ report.conference }}</a>,
+                    {{ report.conference.start_date|date:'Y' }}
+                </div>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Докладов нет.</li>
+        {% endfor %}
+    </ul>
 </div>
 {% endblock %}

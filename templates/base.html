@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
 </head>
 <body class="bg-light d-flex flex-column min-vh-100">
-<nav class="navbar navbar-expand-md navbar-dark bg-primary">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container">
         <a class="navbar-brand" href="{% url 'core:home' %}">НИР кафедры</a>
         {% if user.is_authenticated %}
@@ -24,6 +24,18 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link{% if research_url in request.path %} active{% endif %}" href="{{ research_url }}">НИОКР</a>
+                    </li>
+                    {% url 'publications:publication_list' as publications_url %}
+                    {% url 'ip:ip_list' as ip_url %}
+                    {% url 'conferences:conference_list' as conferences_url %}
+                    <li class="nav-item">
+                        <a class="nav-link{% if publications_url in request.path %} active{% endif %}" href="{{ publications_url }}">Публикации</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if ip_url in request.path %} active{% endif %}" href="{{ ip_url }}">РИД</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if conferences_url in request.path %} active{% endif %}" href="{{ conferences_url }}">Конференции</a>
                     </li>
                     {% if user.is_staff %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Администрирование</a></li>

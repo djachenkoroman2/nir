@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ publication.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'publications:publication_list' %}">Публикации</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ publication.title|truncatechars:60 }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <h1 class="h3 mb-0">{{ publication.title }}</h1>
+    {% if user.is_staff %}
+        <div class="d-flex gap-2">
+            {% if perms.publications.change_publication %}<a href="{% url 'publications:publication_update' publication.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
+            {% if perms.publications.delete_publication %}<a href="{% url 'publications:publication_delete' publication.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Вид</dt><dd class="col-sm-8">{{ publication.get_kind_display|capfirst }}</dd>
+            <dt class="col-sm-4">Авторы</dt>
+            <dd class="col-sm-8">
+                {% for author in publication.authors.all %}
+                    {% if author.teacher %}<a href="{{ author.teacher.get_absolute_url }}">{{ author }}</a>{% else %}{{ author }}{% endif %}{% if not forloop.last %}, {% endif %}
+                {% empty %}—{% endfor %}
+            </dd>
+            <dt class="col-sm-4">Выходные данные</dt><dd class="col-sm-8">{{ publication.imprint }}</dd>
+            {% if publication.doi %}
+                <dt class="col-sm-4">DOI</dt><dd class="col-sm-8"><a href="https://doi.org/{{ publication.doi }}" target="_blank" rel="noopener">{{ publication.doi }}</a></dd>
+            {% endif %}
+            {% if publication.url %}
+                <dt class="col-sm-4">Ссылка</dt><dd class="col-sm-8 text-break"><a href="{{ publication.url }}" target="_blank" rel="noopener">{{ publication.url }}</a></dd>
+            {% endif %}
+            <dt class="col-sm-4">Индексирование</dt>
+            <dd class="col-sm-8">{% if publication.indexing %}{% include 'includes/indexing_badges.html' %}{% else %}—{% endif %}</dd>
+            <dt class="col-sm-4">НИОКР</dt>
+            <dd class="col-sm-8">{% if publication.project %}<a href="{{ publication.project.get_absolute_url }}">{{ publication.project }}</a>{% else %}—{% endif %}</dd>
+            {% if publication.report %}
+                <dt class="col-sm-4">Доклад</dt>
+                <dd class="col-sm-8 mb-0">
+                    «{{ publication.report.title }}» на конференции
+                    <a href="{{ publication.report.conference.get_absolute_url }}">{{ publication.report.conference }}</a>
+                </dd>
+            {% endif %}
+        </dl>
+    </div>
+</div>
+{% endblock %}

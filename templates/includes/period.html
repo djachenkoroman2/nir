@@ -1,0 +1,1 @@
+{{ start|date:'d.m.Y' }}{% if end and end != start %} — {{ end|date:'d.m.Y' }}{% elif not end and open_ended %} — н. в.{% endif %}

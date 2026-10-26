@@ -1,12 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db import transaction
-from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from apps.core.search import search
-from apps.core.views import StaffPermissionRequiredMixin
+from apps.core.views import InlineFormSetMixin, StaffPermissionRequiredMixin
 
 from .forms import ParticipantFormSet, ResearchProjectForm
 from .models import ResearchProject
@@ -41,41 +39,18 @@ class ResearchProjectDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class ParticipantFormSetMixin:
-    """Сохраняет НИОКР вместе с формсетом участников."""
-
-    success_message = ''
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if 'formset' not in context:
-            context['formset'] = ParticipantFormSet(instance=self.object)
-        return context
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object() if 'pk' in self.kwargs else None
-        form = self.get_form()
-        formset = ParticipantFormSet(request.POST, instance=self.object)
-        if form.is_valid() and formset.is_valid():
-            with transaction.atomic():
-                self.object = form.save()
-                formset.instance = self.object
-                formset.save()
-            messages.success(request, self.success_message)
-            return HttpResponseRedirect(self.get_success_url())
-        return self.render_to_response(self.get_context_data(form=form, formset=formset))
-
-
-class ResearchProjectCreateView(StaffPermissionRequiredMixin, ParticipantFormSetMixin, CreateView):
+class ResearchProjectCreateView(StaffPermissionRequiredMixin, InlineFormSetMixin, CreateView):
     model = ResearchProject
     form_class = ResearchProjectForm
+    formset_class = ParticipantFormSet
     permission_required = 'research.add_researchproject'
     success_message = 'НИОКР добавлена.'
 
 
-class ResearchProjectUpdateView(StaffPermissionRequiredMixin, ParticipantFormSetMixin, UpdateView):
+class ResearchProjectUpdateView(StaffPermissionRequiredMixin, InlineFormSetMixin, UpdateView):
     model = ResearchProject
     form_class = ResearchProjectForm
+    formset_class = ParticipantFormSet
     permission_required = 'research.change_researchproject'
     success_message = 'Изменения сохранены.'
 

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Конференции — {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Конференции</h1>
+    {% if user.is_staff and perms.conferences.add_conference %}
+        <a href="{% url 'conferences:conference_create' %}" class="btn btn-primary">Добавить конференцию</a>
+    {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-12 col-lg-5">
+        <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Поиск по названию или месту" aria-label="Поиск">
+    </div>
+    <div class="col-7 col-lg-4">
+        <select name="level" class="form-select" aria-label="Уровень">
+            <option value="">Все уровни</option>
+            {% for value, label in level_choices %}<option value="{{ value }}" {% if level == value %}selected{% endif %}>{{ label|capfirst }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="col-5 col-lg-2">
+        <select name="year" class="form-select" aria-label="Год">
+            <option value="">Все годы</option>
+            {% for value in year_choices %}<option value="{{ value }}" {% if year == value|stringformat:'d' %}selected{% endif %}>{{ value }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="col-12 col-lg-1 d-grid">
+        <button type="submit" class="btn btn-outline-primary">Найти</button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr><th>Название</th><th>Уровень</th><th>Даты</th><th class="d-none d-md-table-cell">Место</th><th class="text-end">Доклады</th></tr>
+            </thead>
+            <tbody>
+            {% for conference in conference_list %}
+                <tr>
+                    <td><a href="{{ conference.get_absolute_url }}">{{ conference.title }}</a></td>
+                    <td><span class="badge {{ conference.level_badge }}">{{ conference.get_level_display }}</span></td>
+                    <td class="text-nowrap">{% include 'includes/period.html' with start=conference.start_date end=conference.end_date %}</td>
+                    <td class="d-none d-md-table-cell">{{ conference.location|default:'—' }}</td>
+                    <td class="text-end">{{ conference.report_count }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Конференции не найдены.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'includes/pagination.html' %}
+{% endblock %}

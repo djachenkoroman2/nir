@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}РИД — {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Результаты интеллектуальной деятельности</h1>
+    {% if user.is_staff and perms.ip.add_intellectualproperty %}
+        <a href="{% url 'ip:ip_create' %}" class="btn btn-primary">Добавить РИД</a>
+    {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-12 col-lg-5">
+        <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Поиск по названию или номеру" aria-label="Поиск">
+    </div>
+    <div class="col-7 col-lg-4">
+        <select name="kind" class="form-select" aria-label="Вид">
+            <option value="">Все виды</option>
+            {% for value, label in kind_choices %}<option value="{{ value }}" {% if kind == value %}selected{% endif %}>{{ label|capfirst }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="col-5 col-lg-2">
+        <select name="year" class="form-select" aria-label="Год регистрации">
+            <option value="">Все годы</option>
+            {% for value in year_choices %}<option value="{{ value }}" {% if year == value|stringformat:'d' %}selected{% endif %}>{{ value }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="col-12 col-lg-1 d-grid">
+        <button type="submit" class="btn btn-outline-primary">Найти</button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr><th>Название</th><th>Вид</th><th>Номер</th><th>Дата регистрации</th></tr>
+            </thead>
+            <tbody>
+            {% for item in intellectualproperty_list %}
+                <tr>
+                    <td>
+                        <a href="{{ item.get_absolute_url }}">{{ item.title }}</a>
+                        <div class="small text-muted">{{ item.authors_display }}</div>
+                    </td>
+                    <td>{{ item.get_kind_display|capfirst }}</td>
+                    <td class="text-nowrap">{{ item.number }}</td>
+                    <td class="text-nowrap">{{ item.registration_date|date:'d.m.Y' }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4" class="text-center text-muted py-4">РИД не найдены.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'includes/pagination.html' %}
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{# Общая страница подтверждения удаления. Блоки: heading, question, warning, cancel_url. #}
+
+{% block title %}Удаление — {{ block.super }}{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">{% block heading %}Удаление{% endblock %}</h1>
+<div class="card shadow-sm border-danger">
+    <div class="card-body">
+        <p>{% block question %}Удалить «{{ object }}»?{% endblock %} Это действие нельзя отменить.</p>
+        {% block warning %}{% endblock %}
+        <form method="post" class="d-flex gap-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger" {% if delete_blocked %}disabled{% endif %}>Удалить</button>
+            <a href="{% block cancel_url %}{{ object.get_absolute_url }}{% endblock %}" class="btn btn-outline-secondary">Отмена</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

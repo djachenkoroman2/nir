@@ -1,24 +1,13 @@
-{% extends 'base.html' %}
+{% extends 'includes/confirm_delete.html' %}
 
-{% block title %}Удаление — {{ block.super }}{% endblock %}
-
-{% block content %}
-<h1 class="h3 mb-3">Удаление преподавателя</h1>
-<div class="card shadow-sm border-danger">
-    <div class="card-body">
-        <p>Удалить преподавателя <strong>{{ object.full_name }}</strong>? Это действие нельзя отменить.</p>
-        {% if object.memberships.exists %}
-            <div class="alert alert-warning">
-                Преподаватель участвует в НИОКР, поэтому удалить его нельзя.
-                Чтобы сохранить историю, снимите отметку «работает на кафедре» в
-                <a href="{% url 'staff:teacher_update' object.pk %}">карточке преподавателя</a>.
-            </div>
-        {% endif %}
-        <form method="post" class="d-flex gap-2">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger" {% if object.memberships.exists %}disabled{% endif %}>Удалить</button>
-            <a href="{{ object.get_absolute_url }}" class="btn btn-outline-secondary">Отмена</a>
-        </form>
-    </div>
-</div>
+{% block heading %}Удаление преподавателя{% endblock %}
+{% block question %}Удалить преподавателя <strong>{{ object.full_name }}</strong>?{% endblock %}
+{% block warning %}
+    {% if delete_blocked %}
+        <div class="alert alert-warning">
+            Преподаватель участвует в НИОКР, публикациях, РИД или докладах, поэтому удалить его нельзя.
+            Чтобы сохранить историю, снимите отметку «работает на кафедре» в
+            <a href="{% url 'staff:teacher_update' object.pk %}">карточке преподавателя</a>.
+        </div>
+    {% endif %}
 {% endblock %}

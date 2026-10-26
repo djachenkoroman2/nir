@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Изменение РИД{% else %}Новый РИД{% endif %} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'ip:ip_list' %}">РИД</a></li>
+        {% if object %}<li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object.title|truncatechars:60 }}</a></li>{% endif %}
+        <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение{% else %}Добавление{% endif %}</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-3">{% if object %}Изменение РИД{% else %}Новый РИД{% endif %}</h1>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+            <div class="row">
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.kind %}</div>
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.number %}</div>
+            </div>
+            {% include 'includes/form_field.html' with field=form.title %}
+            <div class="row">
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.application_date %}</div>
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.registration_date %}</div>
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.holder %}</div>
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.url %}</div>
+            </div>
+            {% include 'includes/form_field.html' with field=form.project %}
+        </div>
+    </div>
+
+    {% include 'includes/author_formset.html' with title='Авторы' %}
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'ip:ip_list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

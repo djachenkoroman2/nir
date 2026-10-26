@@ -1,0 +1,4 @@
+{% extends 'includes/confirm_delete.html' %}
+
+{% block heading %}Удаление конференции{% endblock %}
+{% block question %}Удалить конференцию <strong>«{{ object.title }}»</strong> вместе со всеми докладами ({{ object.reports.count }})?{% endblock %}

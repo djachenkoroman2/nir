@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ conference.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'conferences:conference_list' %}">Конференции</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ conference.title|truncatechars:60 }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <h1 class="h3 mb-0">{{ conference.title }}</h1>
+    {% if user.is_staff %}
+        <div class="d-flex gap-2">
+            {% if perms.conferences.change_conference %}<a href="{% url 'conferences:conference_update' conference.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
+            {% if perms.conferences.delete_conference %}<a href="{% url 'conferences:conference_delete' conference.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Уровень</dt><dd class="col-sm-8"><span class="badge {{ conference.level_badge }}">{{ conference.get_level_display }}</span></dd>
+            <dt class="col-sm-4">Даты проведения</dt><dd class="col-sm-8">{% include 'includes/period.html' with start=conference.start_date end=conference.end_date %}</dd>
+            <dt class="col-sm-4">Место проведения</dt><dd class="col-sm-8">{{ conference.location|default:'—' }}</dd>
+            <dt class="col-sm-4">Сайт</dt>
+            <dd class="col-sm-8 mb-0 text-break">{% if conference.url %}<a href="{{ conference.url }}" target="_blank" rel="noopener">{{ conference.url }}</a>{% else %}—{% endif %}</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="h5 mb-0">Доклады</h2>
+    {% if user.is_staff and perms.conferences.add_report %}
+        <a href="{% url 'conferences:report_create' conference.pk %}" class="btn btn-outline-primary btn-sm">Добавить доклад</a>
+    {% endif %}
+</div>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for report in reports %}
+            <li class="list-group-item py-3">
+                <div class="d-flex flex-wrap justify-content-between gap-2">
+                    <span class="fw-semibold">{{ report.title }}</span>
+                    <span class="text-muted small">{{ report.get_form_display }}</span>
+                </div>
+                <div class="small">
+                    {% for speaker in report.speakers.all %}
+                        {% if speaker.teacher %}<a href="{{ speaker.teacher.get_absolute_url }}">{{ speaker }}</a>{% else %}{{ speaker }}{% endif %}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+                {% if report.publication %}
+                    <div class="small text-muted">Опубликовано: <a href="{{ report.publication.get_absolute_url }}">{{ report.publication.title }}</a></div>
+                {% endif %}
+                {% if user.is_staff %}
+                    <div class="mt-2 d-flex gap-2">
+                        {% if perms.conferences.change_report %}<a href="{% url 'conferences:report_update' report.pk %}" class="btn btn-outline-secondary btn-sm">Изменить</a>{% endif %}
+                        {% if perms.conferences.delete_report %}<a href="{% url 'conferences:report_delete' report.pk %}" class="btn btn-outline-danger btn-sm">Удалить</a>{% endif %}
+                    </div>
+                {% endif %}
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Доклады не добавлены.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

@@ -5,7 +5,10 @@ from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
+from apps.conferences.models import Report
 from apps.core.search import search
+from apps.ip.models import IntellectualProperty
+from apps.publications.models import Publication
 from apps.core.views import StaffPermissionRequiredMixin
 
 from .forms import TeacherForm
@@ -36,7 +39,18 @@ class TeacherDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['memberships'] = self.object.memberships.select_related('project').order_by('-project__start_date')
+        teacher = self.object
+        context['memberships'] = teacher.memberships.select_related('project').order_by('-project__start_date')
+        context['publications'] = (
+            Publication.objects.filter(authors__teacher=teacher).prefetch_related('authors__teacher')
+        )
+        context['intellectual_properties'] = (
+            IntellectualProperty.objects.filter(authors__teacher=teacher).prefetch_related('authors__teacher')
+        )
+        context['reports'] = (
+            Report.objects.filter(speakers__teacher=teacher)
+            .select_related('conference').order_by('-conference__start_date')
+        )
         return context
 
 
@@ -65,13 +79,18 @@ class TeacherDeleteView(StaffPermissionRequiredMixin, DeleteView):
     permission_required = 'staff.delete_teacher'
     success_url = reverse_lazy('staff:teacher_list')
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['delete_blocked'] = self.object.has_protected_relations()
+        return context
+
     def form_valid(self, form):
         try:
             response = super().form_valid(form)
         except ProtectedError:
             messages.error(
                 self.request,
-                'Нельзя удалить преподавателя, который участвует в НИОКР. '
+                'Нельзя удалить преподавателя, который участвует в НИОКР, публикациях, РИД или докладах. '
                 'Снимите отметку «работает на кафедре» вместо удаления.',
             )
             return redirect(self.object)

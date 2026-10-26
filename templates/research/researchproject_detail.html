@@ -47,4 +47,27 @@
         {% endfor %}
     </ul>
 </div>
+
+<h2 class="h5 mt-4">Результаты</h2>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for publication in researchproject.publications.all %}
+            <li class="list-group-item">
+                <span class="badge text-bg-light border me-1">{{ publication.get_kind_display }}</span>
+                <a href="{{ publication.get_absolute_url }}">{{ publication.title }}</a>
+                <span class="small text-muted">({{ publication.year }})</span>
+            </li>
+        {% endfor %}
+        {% for item in researchproject.intellectual_properties.all %}
+            <li class="list-group-item">
+                <span class="badge text-bg-light border me-1">{{ item.get_kind_display }}</span>
+                <a href="{{ item.get_absolute_url }}">{{ item.title }}</a>
+                <span class="small text-muted">(№ {{ item.number }})</span>
+            </li>
+        {% endfor %}
+        {% if not researchproject.publications.exists and not researchproject.intellectual_properties.exists %}
+            <li class="list-group-item text-muted">Публикации и РИД по этой НИОКР не указаны.</li>
+        {% endif %}
+    </ul>
+</div>
 {% endblock %}

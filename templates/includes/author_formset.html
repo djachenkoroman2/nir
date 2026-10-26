@@ -1,0 +1,28 @@
+{# Формсет авторов (публикации, РИД, доклады). Параметры: formset, title. #}
+<h2 class="h5">{{ title|default:'Авторы' }}</h2>
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <p class="form-text mt-0">Выберите преподавателя кафедры или впишите ФИО внешнего автора. Порядок строк — порядок авторов.</p>
+        {{ formset.management_form }}
+        {% for error in formset.non_form_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+        <div id="author-forms">
+            {% for author_form in formset %}
+                {% include 'includes/author_form.html' with form=author_form %}
+            {% endfor %}
+        </div>
+        <button type="button" id="add-author" class="btn btn-outline-secondary btn-sm">+ Добавить</button>
+    </div>
+</div>
+
+<template id="author-empty-form">
+    {% include 'includes/author_form.html' with form=formset.empty_form %}
+</template>
+
+<script>
+    document.getElementById('add-author').addEventListener('click', function () {
+        const total = document.getElementById('id_{{ formset.prefix }}-TOTAL_FORMS');
+        const html = document.getElementById('author-empty-form').innerHTML.replace(/__prefix__/g, total.value);
+        document.getElementById('author-forms').insertAdjacentHTML('beforeend', html);
+        total.value = Number(total.value) + 1;
+    });
+</script>

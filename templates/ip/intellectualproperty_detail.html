@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ intellectualproperty.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'ip:ip_list' %}">РИД</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ intellectualproperty.title|truncatechars:60 }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <h1 class="h3 mb-0">{{ intellectualproperty.title }}</h1>
+    {% if user.is_staff %}
+        <div class="d-flex gap-2">
+            {% if perms.ip.change_intellectualproperty %}<a href="{% url 'ip:ip_update' intellectualproperty.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
+            {% if perms.ip.delete_intellectualproperty %}<a href="{% url 'ip:ip_delete' intellectualproperty.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Вид</dt><dd class="col-sm-8">{{ intellectualproperty.get_kind_display|capfirst }}</dd>
+            <dt class="col-sm-4">Номер</dt><dd class="col-sm-8">{{ intellectualproperty.number }}</dd>
+            <dt class="col-sm-4">Дата подачи заявки</dt><dd class="col-sm-8">{{ intellectualproperty.application_date|date:'d.m.Y'|default:'—' }}</dd>
+            <dt class="col-sm-4">Дата регистрации</dt><dd class="col-sm-8">{{ intellectualproperty.registration_date|date:'d.m.Y' }}</dd>
+            <dt class="col-sm-4">Правообладатель</dt><dd class="col-sm-8">{{ intellectualproperty.holder|default:'—' }}</dd>
+            <dt class="col-sm-4">Авторы</dt>
+            <dd class="col-sm-8">
+                {% for author in intellectualproperty.authors.all %}
+                    {% if author.teacher %}<a href="{{ author.teacher.get_absolute_url }}">{{ author }}</a>{% else %}{{ author }}{% endif %}{% if not forloop.last %}, {% endif %}
+                {% empty %}—{% endfor %}
+            </dd>
+            {% if intellectualproperty.url %}
+                <dt class="col-sm-4">Ссылка</dt><dd class="col-sm-8 text-break"><a href="{{ intellectualproperty.url }}" target="_blank" rel="noopener">{{ intellectualproperty.url }}</a></dd>
+            {% endif %}
+            <dt class="col-sm-4">НИОКР</dt>
+            <dd class="col-sm-8 mb-0">{% if intellectualproperty.project %}<a href="{{ intellectualproperty.project.get_absolute_url }}">{{ intellectualproperty.project }}</a>{% else %}—{% endif %}</dd>
+        </dl>
+    </div>
+</div>
+{% endblock %}

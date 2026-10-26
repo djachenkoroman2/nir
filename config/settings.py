@@ -50,6 +50,9 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.staff',
     'apps.research',
+    'apps.publications',
+    'apps.ip',
+    'apps.conferences',
 ]
 
 MIDDLEWARE = [

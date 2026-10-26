@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Изменение доклада{% else %}Новый доклад{% endif %} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'conferences:conference_list' %}">Конференции</a></li>
+        <li class="breadcrumb-item"><a href="{{ conference.get_absolute_url }}">{{ conference.title|truncatechars:60 }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение доклада{% else %}Новый доклад{% endif %}</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-3">{% if object %}Изменение доклада{% else %}Новый доклад{% endif %}</h1>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+            {% include 'includes/form_field.html' with field=form.title %}
+            <div class="row">
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.form %}</div>
+                <div class="col-md-8">{% include 'includes/form_field.html' with field=form.publication %}</div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'includes/author_formset.html' with title='Докладчики' %}
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="{{ conference.get_absolute_url }}" class="btn btn-outline-secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

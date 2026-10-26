@@ -1,7 +1,7 @@
 from django import forms
 
 from apps.core.forms import BootstrapFormMixin, DateInput
-from apps.staff.models import Teacher
+from apps.staff.forms import teacher_choices
 
 from .models import Participant, ResearchProject
 
@@ -23,11 +23,7 @@ class ParticipantForm(BootstrapFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Новых участников выбираем из работающих; уже добавленный уволенный остаётся в списке.
-        teachers = Teacher.objects.filter(is_active=True)
-        if self.instance.pk:
-            teachers = teachers | Teacher.objects.filter(pk=self.instance.teacher_id)
-        self.fields['teacher'].queryset = teachers.distinct()
+        self.fields['teacher'].queryset = teacher_choices(self.instance.teacher_id)
 
 
 ParticipantFormSet = forms.inlineformset_factory(

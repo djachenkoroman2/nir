@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Изменение публикации{% else %}Новая публикация{% endif %} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'publications:publication_list' %}">Публикации</a></li>
+        {% if object %}<li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object.title|truncatechars:60 }}</a></li>{% endif %}
+        <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение{% else %}Добавление{% endif %}</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-3">{% if object %}Изменение публикации{% else %}Новая публикация{% endif %}</h1>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+            <div class="row">
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.kind %}</div>
+                <div class="col-md-2">{% include 'includes/form_field.html' with field=form.year %}</div>
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.project %}</div>
+            </div>
+            {% include 'includes/form_field.html' with field=form.title %}
+            {% include 'includes/form_field.html' with field=form.source %}
+            <div class="row">
+                <div class="col-4">{% include 'includes/form_field.html' with field=form.volume %}</div>
+                <div class="col-4">{% include 'includes/form_field.html' with field=form.issue %}</div>
+                <div class="col-4">{% include 'includes/form_field.html' with field=form.pages %}</div>
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.doi %}</div>
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.url %}</div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="h5">Индексирование</h2>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">{% include 'includes/form_field.html' with field=form.vak %}</div>
+                <div class="col-md-3">{% include 'includes/form_field.html' with field=form.quartile %}</div>
+                <div class="col-md-6 pt-md-4 d-flex flex-wrap gap-4">
+                    {% include 'includes/form_field.html' with field=form.rinc %}
+                    {% include 'includes/form_field.html' with field=form.rinc_core %}
+                    {% include 'includes/form_field.html' with field=form.scopus %}
+                    {% include 'includes/form_field.html' with field=form.wos %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'includes/author_formset.html' with title='Авторы' %}
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'publications:publication_list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}
