@@ -9,7 +9,7 @@ from apps.conferences.models import Report
 from apps.core.search import search
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
-from apps.core.views import StaffPermissionRequiredMixin
+from apps.core.views import RecordPermissionRequiredMixin
 
 from .forms import TeacherForm
 from .models import Teacher
@@ -54,7 +54,7 @@ class TeacherDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class TeacherCreateView(StaffPermissionRequiredMixin, CreateView):
+class TeacherCreateView(RecordPermissionRequiredMixin, CreateView):
     model = Teacher
     form_class = TeacherForm
     permission_required = 'staff.add_teacher'
@@ -64,7 +64,7 @@ class TeacherCreateView(StaffPermissionRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class TeacherUpdateView(StaffPermissionRequiredMixin, UpdateView):
+class TeacherUpdateView(RecordPermissionRequiredMixin, UpdateView):
     model = Teacher
     form_class = TeacherForm
     permission_required = 'staff.change_teacher'
@@ -74,7 +74,7 @@ class TeacherUpdateView(StaffPermissionRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class TeacherDeleteView(StaffPermissionRequiredMixin, DeleteView):
+class TeacherDeleteView(RecordPermissionRequiredMixin, DeleteView):
     model = Teacher
     permission_required = 'staff.delete_teacher'
     success_url = reverse_lazy('staff:teacher_list')

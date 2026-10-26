@@ -33,3 +33,4 @@ class ReportForm(BootstrapFormMixin, forms.ModelForm):
 
 class ReportSpeakerFormSet(author_formset_factory(Report, ReportSpeaker)):
     empty_error = 'Укажите хотя бы одного докладчика.'
+    missing_teacher_error = 'Укажите среди докладчиков себя: иначе вы не сможете изменять этот доклад.'

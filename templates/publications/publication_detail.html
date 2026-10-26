@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load permissions %}
 
 {% block title %}{{ publication.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
 
@@ -12,10 +13,11 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
     <h1 class="h3 mb-0">{{ publication.title }}</h1>
-    {% if user.is_staff %}
+    {% can user 'publications.change_publication' publication as can_change %}{% can user 'publications.delete_publication' publication as can_delete %}
+    {% if can_change or can_delete %}
         <div class="d-flex gap-2">
-            {% if perms.publications.change_publication %}<a href="{% url 'publications:publication_update' publication.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
-            {% if perms.publications.delete_publication %}<a href="{% url 'publications:publication_delete' publication.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
+            {% if can_change %}<a href="{% url 'publications:publication_update' publication.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
+            {% if can_delete %}<a href="{% url 'publications:publication_delete' publication.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
         </div>
     {% endif %}
 </div>

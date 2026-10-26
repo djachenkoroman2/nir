@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.conferences.models import Conference, Report
+from apps.core.permissions import can_manage, get_teacher, is_editor
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
 from apps.research.models import ResearchProject
@@ -43,14 +44,20 @@ def home(request):
     return render(request, 'core/home.html', {'sections': sections})
 
 
-class StaffPermissionRequiredMixin(PermissionRequiredMixin):
-    """Изменять данные могут только сотрудники (is_staff) с соответствующим правом Django.
+class RecordPermissionRequiredMixin(PermissionRequiredMixin):
+    """Проверяет право на добавление, изменение или удаление записи (см. apps.core.permissions).
 
     Анонимного пользователя перенаправляет на вход, вошедшему без прав возвращает 403.
     """
 
+    def get_object(self, queryset=None):
+        if not hasattr(self, '_object'):
+            self._object = super().get_object(queryset)
+        return self._object
+
     def has_permission(self):
-        return self.request.user.is_staff and super().has_permission()
+        obj = self.get_object() if 'pk' in self.kwargs else None
+        return all(can_manage(self.request.user, perm, obj) for perm in self.get_permission_required())
 
 
 class InlineFormSetMixin:
@@ -62,8 +69,11 @@ class InlineFormSetMixin:
     formset_class = None
     success_message = ''
 
+    def get_formset_kwargs(self):
+        return {}
+
     def get_formset(self, data=None):
-        return self.formset_class(data, instance=self.object)
+        return self.formset_class(data, instance=self.object, **self.get_formset_kwargs())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -83,3 +93,14 @@ class InlineFormSetMixin:
             messages.success(request, self.success_message)
             return HttpResponseRedirect(self.get_success_url())
         return self.render_to_response(self.get_context_data(form=form, formset=formset))
+
+
+class AuthorFormSetMixin(InlineFormSetMixin):
+    """Формсет авторов: преподаватель (не редактор) обязан указать среди авторов себя."""
+
+    def get_formset_kwargs(self):
+        kwargs = super().get_formset_kwargs()
+        user = self.request.user
+        if not all(is_editor(user, perm) for perm in self.get_permission_required()):
+            kwargs['required_teacher'] = get_teacher(user)
+        return kwargs

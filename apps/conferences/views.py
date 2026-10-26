@@ -6,7 +6,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from apps.core.search import search
-from apps.core.views import InlineFormSetMixin, StaffPermissionRequiredMixin
+from apps.core.views import AuthorFormSetMixin, RecordPermissionRequiredMixin
 
 from .forms import ConferenceForm, ReportForm, ReportSpeakerFormSet
 from .models import Conference, Report
@@ -53,7 +53,7 @@ class ConferenceDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class ConferenceCreateView(StaffPermissionRequiredMixin, CreateView):
+class ConferenceCreateView(RecordPermissionRequiredMixin, CreateView):
     model = Conference
     form_class = ConferenceForm
     permission_required = 'conferences.add_conference'
@@ -63,7 +63,7 @@ class ConferenceCreateView(StaffPermissionRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class ConferenceUpdateView(StaffPermissionRequiredMixin, UpdateView):
+class ConferenceUpdateView(RecordPermissionRequiredMixin, UpdateView):
     model = Conference
     form_class = ConferenceForm
     permission_required = 'conferences.change_conference'
@@ -73,7 +73,7 @@ class ConferenceUpdateView(StaffPermissionRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class ConferenceDeleteView(StaffPermissionRequiredMixin, DeleteView):
+class ConferenceDeleteView(RecordPermissionRequiredMixin, DeleteView):
     model = Conference
     permission_required = 'conferences.delete_conference'
     success_url = reverse_lazy('conferences:conference_list')
@@ -83,7 +83,7 @@ class ConferenceDeleteView(StaffPermissionRequiredMixin, DeleteView):
         return super().form_valid(form)
 
 
-class ReportCreateView(StaffPermissionRequiredMixin, InlineFormSetMixin, CreateView):
+class ReportCreateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, CreateView):
     model = Report
     form_class = ReportForm
     formset_class = ReportSpeakerFormSet
@@ -105,7 +105,7 @@ class ReportCreateView(StaffPermissionRequiredMixin, InlineFormSetMixin, CreateV
         return context
 
 
-class ReportUpdateView(StaffPermissionRequiredMixin, InlineFormSetMixin, UpdateView):
+class ReportUpdateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, UpdateView):
     model = Report
     form_class = ReportForm
     formset_class = ReportSpeakerFormSet
@@ -118,7 +118,7 @@ class ReportUpdateView(StaffPermissionRequiredMixin, InlineFormSetMixin, UpdateV
         return context
 
 
-class ReportDeleteView(StaffPermissionRequiredMixin, DeleteView):
+class ReportDeleteView(RecordPermissionRequiredMixin, DeleteView):
     model = Report
     permission_required = 'conferences.delete_report'
 

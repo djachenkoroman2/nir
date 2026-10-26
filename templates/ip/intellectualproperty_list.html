@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
+{% load permissions %}
 
 {% block title %}РИД — {{ block.super }}{% endblock %}
 
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h1 class="h3 mb-0">Результаты интеллектуальной деятельности</h1>
-    {% if user.is_staff and perms.ip.add_intellectualproperty %}
+    {% can user 'ip.add_intellectualproperty' as can_add %}{% if can_add %}
         <a href="{% url 'ip:ip_create' %}" class="btn btn-primary">Добавить РИД</a>
     {% endif %}
 </div>

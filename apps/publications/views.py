@@ -4,7 +4,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from apps.core.search import search
-from apps.core.views import InlineFormSetMixin, StaffPermissionRequiredMixin
+from apps.core.views import AuthorFormSetMixin, RecordPermissionRequiredMixin
 
 from .forms import PublicationAuthorFormSet, PublicationForm
 from .models import Publication
@@ -57,7 +57,7 @@ class PublicationDetailView(LoginRequiredMixin, DetailView):
         return super().get_queryset().select_related('project').prefetch_related('authors__teacher')
 
 
-class PublicationCreateView(StaffPermissionRequiredMixin, InlineFormSetMixin, CreateView):
+class PublicationCreateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, CreateView):
     model = Publication
     form_class = PublicationForm
     formset_class = PublicationAuthorFormSet
@@ -65,7 +65,7 @@ class PublicationCreateView(StaffPermissionRequiredMixin, InlineFormSetMixin, Cr
     success_message = 'Публикация добавлена.'
 
 
-class PublicationUpdateView(StaffPermissionRequiredMixin, InlineFormSetMixin, UpdateView):
+class PublicationUpdateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, UpdateView):
     model = Publication
     form_class = PublicationForm
     formset_class = PublicationAuthorFormSet
@@ -73,7 +73,7 @@ class PublicationUpdateView(StaffPermissionRequiredMixin, InlineFormSetMixin, Up
     success_message = 'Изменения сохранены.'
 
 
-class PublicationDeleteView(StaffPermissionRequiredMixin, DeleteView):
+class PublicationDeleteView(RecordPermissionRequiredMixin, DeleteView):
     model = Publication
     permission_required = 'publications.delete_publication'
     success_url = reverse_lazy('publications:publication_list')

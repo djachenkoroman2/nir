@@ -4,7 +4,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from apps.core.search import search
-from apps.core.views import InlineFormSetMixin, StaffPermissionRequiredMixin
+from apps.core.views import InlineFormSetMixin, RecordPermissionRequiredMixin
 
 from .forms import ParticipantFormSet, ResearchProjectForm
 from .models import ResearchProject
@@ -39,7 +39,7 @@ class ResearchProjectDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class ResearchProjectCreateView(StaffPermissionRequiredMixin, InlineFormSetMixin, CreateView):
+class ResearchProjectCreateView(RecordPermissionRequiredMixin, InlineFormSetMixin, CreateView):
     model = ResearchProject
     form_class = ResearchProjectForm
     formset_class = ParticipantFormSet
@@ -47,7 +47,7 @@ class ResearchProjectCreateView(StaffPermissionRequiredMixin, InlineFormSetMixin
     success_message = 'НИОКР добавлена.'
 
 
-class ResearchProjectUpdateView(StaffPermissionRequiredMixin, InlineFormSetMixin, UpdateView):
+class ResearchProjectUpdateView(RecordPermissionRequiredMixin, InlineFormSetMixin, UpdateView):
     model = ResearchProject
     form_class = ResearchProjectForm
     formset_class = ParticipantFormSet
@@ -55,7 +55,7 @@ class ResearchProjectUpdateView(StaffPermissionRequiredMixin, InlineFormSetMixin
     success_message = 'Изменения сохранены.'
 
 
-class ResearchProjectDeleteView(StaffPermissionRequiredMixin, DeleteView):
+class ResearchProjectDeleteView(RecordPermissionRequiredMixin, DeleteView):
     model = ResearchProject
     permission_required = 'research.delete_researchproject'
     success_url = reverse_lazy('research:project_list')

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load permissions %}
 
 {% block title %}{{ conference.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
 
@@ -12,10 +13,11 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
     <h1 class="h3 mb-0">{{ conference.title }}</h1>
-    {% if user.is_staff %}
+    {% can user 'conferences.change_conference' conference as can_change %}{% can user 'conferences.delete_conference' conference as can_delete %}
+    {% if can_change or can_delete %}
         <div class="d-flex gap-2">
-            {% if perms.conferences.change_conference %}<a href="{% url 'conferences:conference_update' conference.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
-            {% if perms.conferences.delete_conference %}<a href="{% url 'conferences:conference_delete' conference.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
+            {% if can_change %}<a href="{% url 'conferences:conference_update' conference.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
+            {% if can_delete %}<a href="{% url 'conferences:conference_delete' conference.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
         </div>
     {% endif %}
 </div>
@@ -34,7 +36,7 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
     <h2 class="h5 mb-0">Доклады</h2>
-    {% if user.is_staff and perms.conferences.add_report %}
+    {% can user 'conferences.add_report' as can_add %}{% if can_add %}
         <a href="{% url 'conferences:report_create' conference.pk %}" class="btn btn-outline-primary btn-sm">Добавить доклад</a>
     {% endif %}
 </div>
@@ -54,10 +56,11 @@
                 {% if report.publication %}
                     <div class="small text-muted">Опубликовано: <a href="{{ report.publication.get_absolute_url }}">{{ report.publication.title }}</a></div>
                 {% endif %}
-                {% if user.is_staff %}
+                {% can user 'conferences.change_report' report as can_change_report %}{% can user 'conferences.delete_report' report as can_delete_report %}
+                {% if can_change_report or can_delete_report %}
                     <div class="mt-2 d-flex gap-2">
-                        {% if perms.conferences.change_report %}<a href="{% url 'conferences:report_update' report.pk %}" class="btn btn-outline-secondary btn-sm">Изменить</a>{% endif %}
-                        {% if perms.conferences.delete_report %}<a href="{% url 'conferences:report_delete' report.pk %}" class="btn btn-outline-danger btn-sm">Удалить</a>{% endif %}
+                        {% if can_change_report %}<a href="{% url 'conferences:report_update' report.pk %}" class="btn btn-outline-secondary btn-sm">Изменить</a>{% endif %}
+                        {% if can_delete_report %}<a href="{% url 'conferences:report_delete' report.pk %}" class="btn btn-outline-danger btn-sm">Удалить</a>{% endif %}
                     </div>
                 {% endif %}
             </li>

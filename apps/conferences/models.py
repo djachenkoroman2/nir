@@ -78,6 +78,9 @@ class Report(models.Model):
     def get_absolute_url(self):
         return self.conference.get_absolute_url()
 
+    def is_authored_by(self, teacher):
+        return self.speakers.filter(teacher=teacher).exists()
+
     @property
     def speakers_display(self):
         return ', '.join(str(speaker) for speaker in self.speakers.all())

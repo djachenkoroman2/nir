@@ -4,7 +4,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from apps.core.search import search
-from apps.core.views import InlineFormSetMixin, StaffPermissionRequiredMixin
+from apps.core.views import AuthorFormSetMixin, RecordPermissionRequiredMixin
 
 from .forms import IntellectualPropertyAuthorFormSet, IntellectualPropertyForm
 from .models import IntellectualProperty
@@ -46,7 +46,7 @@ class IntellectualPropertyDetailView(LoginRequiredMixin, DetailView):
         return super().get_queryset().select_related('project').prefetch_related('authors__teacher')
 
 
-class IntellectualPropertyCreateView(StaffPermissionRequiredMixin, InlineFormSetMixin, CreateView):
+class IntellectualPropertyCreateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, CreateView):
     model = IntellectualProperty
     form_class = IntellectualPropertyForm
     formset_class = IntellectualPropertyAuthorFormSet
@@ -54,7 +54,7 @@ class IntellectualPropertyCreateView(StaffPermissionRequiredMixin, InlineFormSet
     success_message = 'РИД добавлен.'
 
 
-class IntellectualPropertyUpdateView(StaffPermissionRequiredMixin, InlineFormSetMixin, UpdateView):
+class IntellectualPropertyUpdateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, UpdateView):
     model = IntellectualProperty
     form_class = IntellectualPropertyForm
     formset_class = IntellectualPropertyAuthorFormSet
@@ -62,7 +62,7 @@ class IntellectualPropertyUpdateView(StaffPermissionRequiredMixin, InlineFormSet
     success_message = 'Изменения сохранены.'
 
 
-class IntellectualPropertyDeleteView(StaffPermissionRequiredMixin, DeleteView):
+class IntellectualPropertyDeleteView(RecordPermissionRequiredMixin, DeleteView):
     model = IntellectualProperty
     permission_required = 'ip.delete_intellectualproperty'
     success_url = reverse_lazy('ip:ip_list')

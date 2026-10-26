@@ -48,6 +48,9 @@ class IntellectualProperty(models.Model):
         if self.application_date and self.registration_date and self.registration_date < self.application_date:
             raise ValidationError({'registration_date': 'Дата регистрации не может быть раньше даты подачи заявки.'})
 
+    def is_authored_by(self, teacher):
+        return self.authors.filter(teacher=teacher).exists()
+
     @property
     def authors_display(self):
         return ', '.join(str(author) for author in self.authors.all())

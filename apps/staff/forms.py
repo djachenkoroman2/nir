@@ -35,11 +35,26 @@ class AuthorForm(BootstrapFormMixin, forms.ModelForm):
         self.fields['teacher'].empty_label = '— внешний автор —'
         self.fields['external_name'].widget.attrs['placeholder'] = 'ФИО внешнего автора'
 
+    def has_changed(self):
+        # Новая строка заполнена, если выбран преподаватель или вписано ФИО. Сравнение с initial
+        # не подходит: строку, заранее заполненную текущим преподавателем, Django счёл бы пустой.
+        if self.instance.pk or not self.is_bound:
+            return super().has_changed()
+        return bool(self['teacher'].value() or (self['external_name'].value() or '').strip())
+
 
 class BaseAuthorFormSet(forms.BaseInlineFormSet):
     """Проверяет, что указан хотя бы один автор и преподаватели не повторяются; сохраняет порядок строк."""
 
     empty_error = 'Укажите хотя бы одного автора.'
+    missing_teacher_error = 'Укажите среди авторов себя: иначе вы не сможете изменять эту запись.'
+
+    def __init__(self, *args, required_teacher=None, **kwargs):
+        # required_teacher — преподаватель, который обязан остаться среди авторов (не редактор).
+        self.required_teacher = required_teacher
+        if required_teacher is not None and not getattr(kwargs.get('instance'), 'pk', None):
+            kwargs.setdefault('initial', [{'teacher': required_teacher.pk}])
+        super().__init__(*args, **kwargs)
 
     def _kept_forms(self):
         for form in self.forms:
@@ -59,6 +74,8 @@ class BaseAuthorFormSet(forms.BaseInlineFormSet):
         teachers = [form.cleaned_data['teacher'] for form in forms_ if form.cleaned_data.get('teacher')]
         if len(teachers) != len(set(teachers)):
             raise ValidationError('Один и тот же преподаватель указан несколько раз.')
+        if self.required_teacher is not None and self.required_teacher not in teachers:
+            raise ValidationError(self.missing_teacher_error)
 
     def save(self, commit=True):
         saved = super().save(commit)

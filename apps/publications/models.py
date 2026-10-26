@@ -68,6 +68,9 @@ class Publication(models.Model):
     def get_absolute_url(self):
         return reverse('publications:publication_detail', args=[self.pk])
 
+    def is_authored_by(self, teacher):
+        return self.authors.filter(teacher=teacher).exists()
+
     @property
     def authors_display(self):
         return ', '.join(str(author) for author in self.authors.all())
