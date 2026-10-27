@@ -59,8 +59,8 @@ class Student(ProtectedRelationsMixin, models.Model):
         return f'{self.last_name} {initials}'.strip()
 
 
-class StudentAchievement(models.Model):
-    """Персональное достижение курсанта в научной работе."""
+class AchievementBase(models.Model):
+    """Общие поля персонального достижения (курсанта, адъюнкта)."""
 
     class Kind(models.TextChoices):
         OLYMPIAD = 'olympiad', 'олимпиада'
@@ -77,9 +77,6 @@ class StudentAchievement(models.Model):
         NATIONAL = 'national', 'всероссийский'
         INTERNATIONAL = 'international', 'международный'
 
-    student = models.ForeignKey(
-        Student, verbose_name='курсант', on_delete=models.CASCADE, related_name='achievements'
-    )
     kind = models.CharField('вид', max_length=20, choices=Kind.choices)
     level = models.CharField('уровень', max_length=20, choices=Level.choices)
     title = models.CharField('мероприятие или награда', max_length=500)
@@ -87,28 +84,39 @@ class StudentAchievement(models.Model):
         'результат', max_length=200, help_text='Например: диплом I степени, победитель, участник.'
     )
     date = models.DateField('дата')
-    supervisor = models.ForeignKey(
-        Teacher, verbose_name='руководитель', on_delete=models.PROTECT, null=True, blank=True,
-        related_name='supervised_achievements',
-    )
     document = models.CharField(
         'подтверждающий документ', max_length=500, blank=True, help_text='Ссылка или реквизиты документа.'
     )
 
     class Meta:
-        verbose_name = 'достижение курсанта'
-        verbose_name_plural = 'достижения курсантов'
+        abstract = True
         ordering = ['-date', 'title']
 
     def __str__(self):
         return f'{self.title}: {self.result}'
+
+    @property
+    def document_is_link(self):
+        return self.document.startswith(('http://', 'https://'))
+
+
+class StudentAchievement(AchievementBase):
+    """Персональное достижение курсанта в научной работе."""
+
+    student = models.ForeignKey(
+        Student, verbose_name='курсант', on_delete=models.CASCADE, related_name='achievements'
+    )
+    supervisor = models.ForeignKey(
+        Teacher, verbose_name='руководитель', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='supervised_achievements',
+    )
+
+    class Meta(AchievementBase.Meta):
+        verbose_name = 'достижение курсанта'
+        verbose_name_plural = 'достижения курсантов'
 
     def get_absolute_url(self):
         return self.student.get_absolute_url()
 
     def is_supervised_by(self, teacher):
         return self.student.is_supervised_by(teacher)
-
-    @property
-    def document_is_link(self):
-        return self.document.startswith(('http://', 'https://'))

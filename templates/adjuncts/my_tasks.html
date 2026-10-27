@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Мои задачи — {{ block.super }}{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Мои задачи</h1>
+
+{% if adjunct_choices|length > 1 %}
+    <form method="get" class="row g-2 mb-3">
+        <input type="hidden" name="status" value="{{ status }}">
+        <div class="col-8 col-md-4">
+            <select name="adjunct" class="form-select" aria-label="Адъюнкт">
+                <option value="">Все адъюнкты</option>
+                {% for item in adjunct_choices %}
+                    <option value="{{ item.pk }}" {% if adjunct == item.pk|stringformat:'d' %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-4 col-md-2 d-grid"><button type="submit" class="btn btn-outline-primary">Показать</button></div>
+    </form>
+{% endif %}
+
+{% include 'adjuncts/includes/status_filter.html' %}
+{% include 'adjuncts/includes/task_table.html' with show_adjunct=True %}
+{% include 'includes/pagination.html' %}
+{% endblock %}

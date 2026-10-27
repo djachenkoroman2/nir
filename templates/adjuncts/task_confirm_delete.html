@@ -1,0 +1,4 @@
+{% extends 'includes/confirm_delete.html' %}
+
+{% block heading %}Удаление задачи{% endblock %}
+{% block question %}Удалить задачу <strong>«{{ object.title }}»</strong> вместе с обсуждением? Если задача просто больше не нужна, её можно перевести в статус «отменена».{% endblock %}

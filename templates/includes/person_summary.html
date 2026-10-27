@@ -1,0 +1,15 @@
+{# Сводка по трудам и достижениям человека кафедры. Параметры: publication_stats, achievements, achievement_levels. #}
+<h2 class="h5">Сводка</h2>
+<div class="row g-2 mb-4 text-center">
+    <div class="col-6 col-md"><a href="#publications" class="card card-body py-2 text-decoration-none"><div class="fs-4">{{ publication_stats.total }}</div><div class="small text-muted">публикаций</div></a></div>
+    <div class="col-6 col-md"><div class="card card-body py-2"><div class="fs-4">{{ publication_stats.vak }}</div><div class="small text-muted">ВАК</div></div></div>
+    <div class="col-6 col-md"><div class="card card-body py-2"><div class="fs-4">{{ publication_stats.rinc }}</div><div class="small text-muted">РИНЦ</div></div></div>
+    <div class="col-6 col-md"><div class="card card-body py-2"><div class="fs-4">{{ publication_stats.scopus }}</div><div class="small text-muted">Scopus</div></div></div>
+    <div class="col-6 col-md"><div class="card card-body py-2"><div class="fs-4">{{ publication_stats.wos }}</div><div class="small text-muted">WoS</div></div></div>
+</div>
+<div class="row g-2 mb-4 text-center">
+    <div class="col-6 col-md"><a href="#achievements" class="card card-body py-2 text-decoration-none"><div class="fs-4">{{ achievements|length }}</div><div class="small text-muted">достижений</div></a></div>
+    {% for label, count in achievement_levels %}
+        <div class="col-6 col-md"><div class="card card-body py-2"><div class="fs-4">{{ count }}</div><div class="small text-muted">{{ label }} уровень</div></div></div>
+    {% endfor %}
+</div>

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Задачи: {{ adjunct.short_name }} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'adjuncts:adjunct_list' %}">Адъюнктура</a></li>
+        <li class="breadcrumb-item"><a href="{{ adjunct.get_absolute_url }}">{{ adjunct.short_name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Задачи</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Задачи адъюнкта {{ adjunct.full_name }}</h1>
+    {% if can_add_task %}<a href="{% url 'adjuncts:task_create' adjunct.pk %}" class="btn btn-primary">Поставить задачу</a>{% endif %}
+</div>
+
+{% include 'adjuncts/includes/status_filter.html' %}
+{% include 'adjuncts/includes/task_table.html' %}
+{% include 'includes/pagination.html' %}
+{% endblock %}

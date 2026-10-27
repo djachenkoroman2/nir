@@ -70,6 +70,10 @@ class Teacher(ProtectedRelationsMixin, models.Model):
     def get_absolute_url(self):
         return reverse('staff:teacher_detail', args=[self.pk])
 
+    def clean(self):
+        if self.user_id and hasattr(self.user, 'adjunct'):
+            raise ValidationError({'user': 'Эта учётная запись уже привязана к карточке адъюнкта.'})
+
     @property
     def full_name(self):
         return ' '.join(part for part in (self.last_name, self.first_name, self.middle_name) if part)
@@ -81,12 +85,20 @@ class Teacher(ProtectedRelationsMixin, models.Model):
 
 
 # Что подгружать вместе с записями, у которых выводятся авторы (докладчики), — без запросов в цикле.
-AUTHORS_PREFETCH = ('authors__teacher', 'authors__student')
-SPEAKERS_PREFETCH = ('speakers__teacher', 'speakers__student')
+AUTHORS_PREFETCH = ('authors__teacher', 'authors__student', 'authors__adjunct')
+SPEAKERS_PREFETCH = ('speakers__teacher', 'speakers__student', 'speakers__adjunct')
+
+
+def author_lookup(person):
+    """Условие «автор — этот человек» для фильтра авторов: {'teacher': …} или {'adjunct': …}.
+
+    Имя поля автора совпадает с именем модели человека (Teacher → teacher, Adjunct → adjunct).
+    """
+    return {person._meta.model_name: person}
 
 
 class AuthorBase(models.Model):
-    """Автор (соавтор, докладчик): преподаватель кафедры, курсант или внешний человек, указанный текстом.
+    """Автор (соавтор, докладчик): преподаватель кафедры, курсант, адъюнкт или внешний человек, указанный текстом.
 
     Используется в публикациях, РИД и докладах; порядок авторов хранится в поле order.
     """
@@ -96,6 +108,9 @@ class AuthorBase(models.Model):
     )
     student = models.ForeignKey(
         'students.Student', verbose_name='курсант', on_delete=models.PROTECT, null=True, blank=True
+    )
+    adjunct = models.ForeignKey(
+        'adjuncts.Adjunct', verbose_name='адъюнкт', on_delete=models.PROTECT, null=True, blank=True
     )
     external_name = models.CharField(
         'внешний автор', max_length=200, blank=True, help_text='ФИО, если автор не работает на кафедре.'
@@ -111,10 +126,19 @@ class AuthorBase(models.Model):
             return self.teacher.short_name
         if self.student_id:
             return self.student.short_name
+        if self.adjunct_id:
+            return self.adjunct.short_name
         return self.external_name
 
+    @property
+    def person(self):
+        """Преподаватель, курсант или адъюнкт кафедры; None для внешнего автора."""
+        return self.teacher or self.student or self.adjunct
+
     def clean(self):
-        if [bool(self.teacher_id), bool(self.student_id), bool(self.external_name.strip())].count(True) != 1:
+        filled = [self.teacher_id, self.student_id, self.adjunct_id, self.external_name.strip()]
+        if sum(map(bool, filled)) != 1:
             raise ValidationError(
-                'Выберите преподавателя кафедры или курсанта либо укажите ФИО внешнего автора (что-то одно).'
+                'Выберите преподавателя кафедры, курсанта или адъюнкта '
+                'либо укажите ФИО внешнего автора (что-то одно).'
             )

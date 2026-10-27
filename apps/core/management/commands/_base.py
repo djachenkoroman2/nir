@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from apps.adjuncts.models import Adjunct, AdjunctAchievement, PlanStage, Task, TaskComment
 from apps.conferences.models import Conference, Report, ReportSpeaker
 from apps.ip.models import IntellectualProperty, IntellectualPropertyAuthor
 from apps.publications.models import Publication, PublicationAuthor
@@ -11,12 +12,14 @@ from apps.staff.models import Teacher
 from apps.students.models import Student, StudentAchievement
 
 # Предметные модели в порядке удаления: сначала зависимые записи, потом те, на которые они
-# ссылаются с on_delete=PROTECT (авторы → преподаватели и курсанты, защиты → школы и т.д.).
+# ссылаются с on_delete=PROTECT (авторы → преподаватели, курсанты и адъюнкты, защиты → школы и т.д.).
 DOMAIN_MODELS = [
     ReportSpeaker, Report, Conference,
     PublicationAuthor, Publication,
     IntellectualPropertyAuthor, IntellectualProperty,
-    DissertationDefense, ScientificSchool,
+    DissertationDefense,
+    TaskComment, Task, PlanStage, AdjunctAchievement, Adjunct,
+    ScientificSchool,
     Participant, ResearchProject,
     StudentAchievement, Student,
     Teacher,

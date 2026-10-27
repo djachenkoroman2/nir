@@ -16,5 +16,7 @@ urlpatterns = [
     path('conferences/', include('apps.conferences.urls')),
     path('schools/', include('apps.schools.urls')),
     path('students/', include('apps.students.urls')),
+    path('adjuncts/', include('apps.adjuncts.urls')),
+    path('tasks/', include('apps.adjuncts.task_urls')),
     path('', include('apps.core.urls')),
 ]

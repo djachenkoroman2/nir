@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load permissions %}
+
+{% block title %}{{ adjunct.short_name }} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'adjuncts:adjunct_list' %}">Адъюнктура</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ adjunct.short_name }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <h1 class="h3 mb-0">
+        {{ adjunct.full_name }}
+        <span class="badge {{ adjunct.status_badge }} fs-6 align-middle">{{ adjunct.get_status_display }}</span>
+    </h1>
+    {% can user 'adjuncts.change_adjunct' adjunct as can_change %}{% can user 'adjuncts.delete_adjunct' adjunct as can_delete %}
+    <div class="d-flex gap-2">
+        {% if can_change %}<a href="{% url 'adjuncts:adjunct_update' adjunct.pk %}" class="btn btn-outline-primary">Изменить</a>
+        {% elif is_own_card %}<a href="{% url 'adjuncts:adjunct_contacts' adjunct.pk %}" class="btn btn-outline-primary">Изменить контакты</a>{% endif %}
+        {% if can_delete %}<a href="{% url 'adjuncts:adjunct_delete' adjunct.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
+    </div>
+</div>
+
+<ul class="nav nav-pills mb-3 small">
+    <li class="nav-item"><a class="nav-link" href="#plan">План работы</a></li>
+    {% if show_tasks %}<li class="nav-item"><a class="nav-link" href="#tasks">Задачи</a></li>{% endif %}
+    <li class="nav-item"><a class="nav-link" href="#achievements">Достижения</a></li>
+    <li class="nav-item"><a class="nav-link" href="#publications">Труды</a></li>
+</ul>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Тема диссертации</dt><dd class="col-sm-8">{{ adjunct.dissertation_topic }}</dd>
+            <dt class="col-sm-4">Научная специальность</dt><dd class="col-sm-8">{{ adjunct.specialty }}</dd>
+            <dt class="col-sm-4">Научный руководитель</dt>
+            <dd class="col-sm-8"><a href="{{ adjunct.supervisor.get_absolute_url }}">{{ adjunct.supervisor.full_name }}</a></dd>
+            <dt class="col-sm-4">Научная школа</dt>
+            <dd class="col-sm-8">{% if adjunct.school %}<a href="{{ adjunct.school.get_absolute_url }}">{{ adjunct.school }}</a>{% else %}—{% endif %}</dd>
+            <dt class="col-sm-4">Год поступления</dt><dd class="col-sm-8">{{ adjunct.admission_year }}</dd>
+            <dt class="col-sm-4">Курс</dt><dd class="col-sm-8">{% include 'adjuncts/includes/course.html' %}</dd>
+            <dt class="col-sm-4">Форма обучения, срок</dt>
+            <dd class="col-sm-8">{{ adjunct.get_study_form_display|capfirst }}, {{ adjunct.study_years }} г.</dd>
+            <dt class="col-sm-4">Планируемый год защиты</dt><dd class="col-sm-8">{{ adjunct.planned_defense_year|default:'—' }}</dd>
+            {% for defense in defenses %}
+                <dt class="col-sm-4">Защита диссертации</dt>
+                <dd class="col-sm-8">{{ defense.get_kind_display|capfirst }}, {{ defense.defense_date|date:'d.m.Y' }}, <a href="{{ defense.school.get_absolute_url }}">{{ defense.school }}</a></dd>
+            {% endfor %}
+            <dt class="col-sm-4">E-mail</dt>
+            <dd class="col-sm-8">{% if adjunct.email %}<a href="mailto:{{ adjunct.email }}">{{ adjunct.email }}</a>{% else %}—{% endif %}</dd>
+            <dt class="col-sm-4">Телефон</dt><dd class="col-sm-8">{{ adjunct.phone|default:'—' }}</dd>
+            {% if user.is_staff %}
+                <dt class="col-sm-4">Учётная запись</dt><dd class="col-sm-8 mb-0">{{ adjunct.user.username|default:'—' }}</dd>
+            {% endif %}
+        </dl>
+    </div>
+</div>
+
+{% include 'includes/person_summary.html' %}
+
+{# --- Индивидуальный план --- #}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h2 class="h5 mb-0" id="plan">
+        Индивидуальный план работы
+        {% if plan_stages %}<span class="text-muted fw-normal">— выполнено {{ plan_done }} из {{ plan_stages|length }} ({{ plan_percent }}%)</span>{% endif %}
+    </h2>
+    {% can user 'adjuncts.add_planstage' adjunct as can_add_stage %}{% if can_add_stage %}
+        <a href="{% url 'adjuncts:stage_create' adjunct.pk %}" class="btn btn-outline-primary btn-sm">Добавить этап</a>
+    {% endif %}
+</div>
+{% if plan_stages %}
+    <div class="progress mb-3" role="progressbar" aria-label="Выполнение плана" aria-valuenow="{{ plan_percent }}" aria-valuemin="0" aria-valuemax="100" style="height: .5rem">
+        <div class="progress-bar bg-success" style="width: {{ plan_percent }}%"></div>
+    </div>
+{% endif %}
+{% can user 'adjuncts.change_planstage' adjunct as can_change_stage %}{% can user 'adjuncts.delete_planstage' adjunct as can_delete_stage %}
+{% regroup plan_stages by study_year as stages_by_year %}
+{% for year_group in stages_by_year %}
+    <h3 class="h6 mt-3 text-muted">{{ year_group.grouper }}-й год обучения</h3>
+    <div class="card shadow-sm">
+        <ul class="list-group list-group-flush">
+            {% for stage in year_group.list %}
+                <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
+                    <div>
+                        <span class="badge {{ stage.status_badge }}">{{ stage.get_status_display }}</span>
+                        {{ stage.title }}
+                        <div class="small text-muted">
+                            {{ stage.get_kind_display|capfirst }}, срок {{ stage.due_date|date:'d.m.Y' }}{% if stage.is_overdue %} <span class="text-danger">(просрочен)</span>{% endif %}{% if stage.completed_date %}, выполнен {{ stage.completed_date|date:'d.m.Y' }}{% endif %}
+                        </div>
+                        {% if stage.supervisor_note %}<div class="small">Руководитель: {{ stage.supervisor_note }}</div>{% endif %}
+                    </div>
+                    <div class="text-nowrap">
+                        {% if is_own_card and stage.status == 'planned' %}
+                            <form method="post" action="{% url 'adjuncts:stage_start' stage.pk %}" class="d-inline">
+                                {% csrf_token %}<button type="submit" class="btn btn-outline-info btn-sm">Начать выполнение</button>
+                            </form>
+                        {% endif %}
+                        {% if can_change_stage %}<a href="{% url 'adjuncts:stage_update' stage.pk %}" class="btn btn-link btn-sm p-0 me-2">Изменить</a>{% endif %}
+                        {% if can_delete_stage %}<a href="{% url 'adjuncts:stage_delete' stage.pk %}" class="btn btn-link btn-sm p-0 text-danger">Удалить</a>{% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% empty %}
+    <div class="card shadow-sm"><div class="card-body text-muted">План работы ещё не составлен.</div></div>
+{% endfor %}
+
+{# --- Задачи (только адъюнкту, руководителю и редакторам) --- #}
+{% if show_tasks %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 mb-2">
+        <h2 class="h5 mb-0" id="tasks">Открытые задачи <span class="text-muted fw-normal">({{ tasks|length }})</span></h2>
+        <div class="d-flex gap-2">
+            <a href="{% url 'adjuncts:adjunct_tasks' adjunct.pk %}?status=all" class="btn btn-outline-secondary btn-sm">Все задачи{% if closed_task_count %} (завершённых: {{ closed_task_count }}){% endif %}</a>
+            {% can user 'adjuncts.add_task' adjunct as can_add_task %}{% if can_add_task %}
+                <a href="{% url 'adjuncts:task_create' adjunct.pk %}" class="btn btn-outline-primary btn-sm">Поставить задачу</a>
+            {% endif %}
+        </div>
+    </div>
+    {% include 'adjuncts/includes/task_table.html' %}
+{% endif %}
+
+{# --- Достижения --- #}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 mb-2">
+    <h2 class="h5 mb-0" id="achievements">Достижения <span class="text-muted fw-normal">({{ achievements|length }})</span></h2>
+    {% can user 'adjuncts.add_adjunctachievement' adjunct as can_add_achievement %}{% if can_add_achievement %}
+        <a href="{% url 'adjuncts:achievement_create' adjunct.pk %}" class="btn btn-outline-primary btn-sm">Добавить достижение</a>
+    {% endif %}
+</div>
+{% can user 'adjuncts.change_adjunctachievement' adjunct as can_change_achievement %}{% can user 'adjuncts.delete_adjunctachievement' adjunct as can_delete_achievement %}
+{% include 'includes/achievement_items.html' with can_change=can_change_achievement can_delete=can_delete_achievement change_url='adjuncts:achievement_update' delete_url='adjuncts:achievement_delete' %}
+
+{% include 'includes/person_works.html' with who='адъюнкта' %}
+{% endblock %}

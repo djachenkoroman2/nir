@@ -1,0 +1,6 @@
+{# Фильтр задач по статусу (кнопки). Параметры: status, status_choices. Остальные параметры адреса сохраняются. #}
+<div class="btn-group flex-wrap mb-3" role="group" aria-label="Статус задач">
+    {% for value, label in status_choices %}
+        <a href="{% querystring status=value page=None %}" class="btn btn-sm {% if status == value %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ label }}</a>
+    {% endfor %}
+</div>

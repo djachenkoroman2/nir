@@ -30,7 +30,7 @@ class SchoolForm(BootstrapFormMixin, forms.ModelForm):
 class DissertationDefenseForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = DissertationDefense
-        fields = ['full_name', 'teacher', 'kind', 'title', 'defense_date', 'school', 'supervisor']
+        fields = ['full_name', 'teacher', 'adjunct', 'kind', 'title', 'defense_date', 'school', 'supervisor']
         widgets = {'defense_date': DateInput()}
 
     def __init__(self, *args, **kwargs):

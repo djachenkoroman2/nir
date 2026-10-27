@@ -36,6 +36,10 @@ class DissertationDefense(models.Model):
         Teacher, verbose_name='сотрудник кафедры', on_delete=models.PROTECT, null=True, blank=True,
         related_name='dissertation_defenses', help_text='Если защитился преподаватель кафедры.',
     )
+    adjunct = models.ForeignKey(
+        'adjuncts.Adjunct', verbose_name='адъюнкт кафедры', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='defenses', help_text='Если защитился адъюнкт кафедры.',
+    )
     kind = models.CharField('вид', max_length=20, choices=Kind.choices)
     title = models.CharField('тема диссертации', max_length=500)
     defense_date = models.DateField('дата защиты')

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load permissions %}
+
+{% block title %}Адъюнктура — {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Адъюнктура</h1>
+    {% can user 'adjuncts.add_adjunct' as can_add %}{% if can_add %}
+        <a href="{% url 'adjuncts:adjunct_create' %}" class="btn btn-primary">Добавить адъюнкта</a>
+    {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-12 col-lg-4">
+        <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Поиск по ФИО и теме" aria-label="Поиск по ФИО и теме">
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <select name="supervisor" class="form-select" aria-label="Научный руководитель">
+            <option value="">Все руководители</option>
+            {% for teacher in supervisor_choices %}
+                <option value="{{ teacher.pk }}" {% if supervisor == teacher.pk|stringformat:'d' %}selected{% endif %}>{{ teacher }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-lg-1">
+        <select name="admission_year" class="form-select" aria-label="Год поступления">
+            <option value="">Год</option>
+            {% for value in year_choices %}
+                <option value="{{ value }}" {% if admission_year == value|stringformat:'d' %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <select name="study_form" class="form-select" aria-label="Форма обучения">
+            <option value="">Любая форма</option>
+            {% for value, label in study_form_choices %}
+                <option value="{{ value }}" {% if study_form == value %}selected{% endif %}>{{ label|capfirst }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <select name="status" class="form-select" aria-label="Статус">
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label|capfirst }}</option>
+            {% endfor %}
+            <option value="{{ all }}" {% if status == all %}selected{% endif %}>Все статусы</option>
+        </select>
+    </div>
+    <div class="col-12 col-lg-1 d-grid">
+        <button type="submit" class="btn btn-outline-primary">Найти</button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>ФИО</th>
+                <th class="d-none d-lg-table-cell">Тема диссертации</th>
+                <th class="d-none d-md-table-cell">Поступил</th>
+                <th>Курс</th>
+                <th class="d-none d-md-table-cell">Руководитель</th>
+                <th class="d-none d-md-table-cell">Статус</th>
+                <th class="text-end">Публикаций</th>
+                {% if show_task_column %}<th class="text-end">Открытых задач</th>{% endif %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for adjunct in adjunct_list %}
+                <tr>
+                    <td><a href="{{ adjunct.get_absolute_url }}">{{ adjunct.full_name }}</a></td>
+                    <td class="d-none d-lg-table-cell small">{{ adjunct.dissertation_topic|truncatechars:90 }}</td>
+                    <td class="d-none d-md-table-cell">{{ adjunct.admission_year }}</td>
+                    <td>{% include 'adjuncts/includes/course.html' %}</td>
+                    <td class="d-none d-md-table-cell"><a href="{{ adjunct.supervisor.get_absolute_url }}">{{ adjunct.supervisor }}</a></td>
+                    <td class="d-none d-md-table-cell"><span class="badge {{ adjunct.status_badge }}">{{ adjunct.get_status_display }}</span></td>
+                    <td class="text-end">{{ adjunct.publication_count }}</td>
+                    {% if show_task_column %}
+                        <td class="text-end">{% if adjunct.show_tasks %}<a href="{% url 'adjuncts:adjunct_tasks' adjunct.pk %}">{{ adjunct.open_task_count }}</a>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-4">Адъюнкты не найдены.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'includes/pagination.html' %}
+<p class="text-muted small mt-3">Курс считается по году поступления (учебный год начинается 1 сентября). Публикации адъюнктов ведутся в разделе «Публикации».</p>
+{% endblock %}

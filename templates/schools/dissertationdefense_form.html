@@ -19,8 +19,9 @@
             {% csrf_token %}
             {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
             <div class="row">
-                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.full_name %}</div>
-                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.teacher %}</div>
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.full_name %}</div>
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.teacher %}</div>
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.adjunct %}</div>
                 <div class="col-md-4">{% include 'includes/form_field.html' with field=form.kind %}</div>
                 <div class="col-md-4">{% include 'includes/form_field.html' with field=form.defense_date %}</div>
                 <div class="col-md-4">{% include 'includes/form_field.html' with field=form.school %}</div>

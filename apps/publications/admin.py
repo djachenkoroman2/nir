@@ -6,7 +6,7 @@ from .models import Publication, PublicationAuthor
 class PublicationAuthorInline(admin.TabularInline):
     model = PublicationAuthor
     extra = 1
-    autocomplete_fields = ['teacher', 'student']
+    autocomplete_fields = ['teacher', 'student', 'adjunct']
 
 
 @admin.register(Publication)

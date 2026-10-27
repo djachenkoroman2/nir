@@ -3,7 +3,7 @@ from django.db import models
 from django.urls import reverse
 
 from apps.research.models import ResearchProject
-from apps.staff.models import AuthorBase
+from apps.staff.models import AuthorBase, author_lookup
 
 
 class IntellectualProperty(models.Model):
@@ -52,8 +52,8 @@ class IntellectualProperty(models.Model):
         if self.application_date and self.registration_date and self.registration_date < self.application_date:
             raise ValidationError({'registration_date': 'Дата регистрации не может быть раньше даты подачи заявки.'})
 
-    def is_authored_by(self, teacher):
-        return self.authors.filter(teacher=teacher).exists()
+    def is_authored_by(self, person):
+        return self.authors.filter(**author_lookup(person)).exists()
 
     @property
     def authors_display(self):
@@ -76,5 +76,9 @@ class IntellectualPropertyAuthor(AuthorBase):
             models.UniqueConstraint(
                 fields=['intellectual_property', 'student'], condition=models.Q(student__isnull=False),
                 name='unique_ip_student',
+            ),
+            models.UniqueConstraint(
+                fields=['intellectual_property', 'adjunct'], condition=models.Q(adjunct__isnull=False),
+                name='unique_ip_adjunct',
             ),
         ]

@@ -1,0 +1,13 @@
+{% extends 'includes/confirm_delete.html' %}
+
+{% block heading %}Удаление адъюнкта{% endblock %}
+{% block question %}Удалить адъюнкта <strong>{{ object.full_name }}</strong> вместе с планом работы, задачами и достижениями?{% endblock %}
+{% block warning %}
+    {% if delete_blocked %}
+        <div class="alert alert-warning">
+            Адъюнкт указан автором публикаций, РИД или докладов либо связан с защитой диссертации, поэтому удалить его
+            нельзя. Сначала уберите эти связи. Если адъюнкт окончил обучение, защитился или отчислен, измените статус в
+            <a href="{% url 'adjuncts:adjunct_update' object.pk %}">карточке адъюнкта</a>.
+        </div>
+    {% endif %}
+{% endblock %}

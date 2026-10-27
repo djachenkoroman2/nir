@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load permissions adjuncts %}
+
+{% block title %}{{ task.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'adjuncts:adjunct_list' %}">Адъюнктура</a></li>
+        <li class="breadcrumb-item"><a href="{{ adjunct.get_absolute_url }}">{{ adjunct.short_name }}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'adjuncts:adjunct_tasks' adjunct.pk %}">Задачи</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ task.title|truncatechars:60 }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <h1 class="h3 mb-0">{{ task.title }}</h1>
+    {% can user 'adjuncts.change_task' task as can_change %}{% can user 'adjuncts.delete_task' task as can_delete %}
+    {% if can_change or can_delete %}
+        <div class="d-flex gap-2">
+            {% if can_change %}<a href="{% url 'tasks:task_update' task.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
+            {% if can_delete %}<a href="{% url 'tasks:task_delete' task.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <dl class="row mb-3">
+            <dt class="col-sm-3">Адъюнкт</dt><dd class="col-sm-9"><a href="{{ adjunct.get_absolute_url }}">{{ adjunct.full_name }}</a></dd>
+            <dt class="col-sm-3">Статус</dt>
+            <dd class="col-sm-9">
+                <span class="badge {{ task.status_badge }}">{{ task.get_status_display }}</span>
+                {% if task.completed_at %}<span class="small text-muted ms-1">{{ task.completed_at|date:'d.m.Y H:i' }}</span>{% endif %}
+            </dd>
+            <dt class="col-sm-3">Приоритет</dt><dd class="col-sm-9"><span class="badge {{ task.priority_badge }}">{{ task.get_priority_display }}</span></dd>
+            <dt class="col-sm-3">Срок</dt>
+            <dd class="col-sm-9">{{ task.due_date|date:'d.m.Y'|default:'не задан' }}{% if task.is_overdue %} <span class="badge text-bg-danger">просрочена</span>{% endif %}</dd>
+            {% if task.plan_stage %}<dt class="col-sm-3">Этап плана</dt><dd class="col-sm-9">{{ task.plan_stage }}</dd>{% endif %}
+            <dt class="col-sm-3">Поставил(а)</dt>
+            <dd class="col-sm-9 mb-0">{{ task.created_by|person_name }}, {{ task.created_at|date:'d.m.Y H:i' }}</dd>
+        </dl>
+        {% if task.description %}<div class="border-top pt-3">{{ task.description|linebreaks }}</div>{% endif %}
+        {% if transitions %}
+            <div class="border-top pt-3 d-flex flex-wrap gap-2 align-items-center">
+                <span class="small text-muted">Перевести в статус:</span>
+                {% for value, label in transitions %}
+                    <form method="post" action="{% url 'tasks:task_status' task.pk %}" class="m-0">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="{{ value }}">
+                        <button type="submit" class="btn btn-sm {% if value == 'done' %}btn-success{% elif value == 'cancelled' %}btn-outline-secondary{% else %}btn-outline-primary{% endif %}">{{ label|capfirst }}</button>
+                    </form>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<h2 class="h5" id="comments">Обсуждение <span class="text-muted fw-normal">({{ comments|length }})</span></h2>
+<div class="card shadow-sm mb-3">
+    <ul class="list-group list-group-flush">
+        {% for comment in comments %}
+            <li class="list-group-item{% if comment.is_system %} bg-body-tertiary small text-muted{% endif %}">
+                <div class="d-flex justify-content-between gap-2">
+                    <div>
+                        <strong>{{ comment.author|person_name }}</strong>
+                        <span class="text-muted small ms-1">{{ comment.created_at|date:'d.m.Y H:i' }}</span>
+                    </div>
+                    {% if comment.deletable %}
+                        <form method="post" action="{% url 'tasks:comment_delete' comment.pk %}" class="m-0">
+                            {% csrf_token %}<button type="submit" class="btn btn-link btn-sm p-0 text-danger">Удалить</button>
+                        </form>
+                    {% endif %}
+                </div>
+                {% if comment.is_system %}{{ comment.text }}{% else %}<div class="mt-1">{{ comment.text|linebreaksbr }}</div>{% endif %}
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Комментариев пока нет.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+{% if can_comment %}
+    <form method="post" novalidate class="card shadow-sm card-body">
+        {% csrf_token %}
+        {% include 'includes/form_field.html' with field=comment_form.text %}
+        <div><button type="submit" class="btn btn-primary">Отправить</button></div>
+        <div class="form-text">Свой комментарий можно удалить в течение 15 минут после отправки.</div>
+    </form>
+{% endif %}
+{% endblock %}

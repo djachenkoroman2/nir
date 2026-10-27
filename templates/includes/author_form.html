@@ -1,13 +1,17 @@
 <div class="row g-2 align-items-start mb-2">
     {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
     {% for error in form.non_field_errors %}<div class="col-12"><div class="alert alert-danger py-2 mb-0">{{ error }}</div></div>{% endfor %}
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-3">
         {{ form.teacher }}
         {% for error in form.teacher.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
     </div>
-    <div class="col-12 col-md-3">
+    <div class="col-6 col-md-2">
         {{ form.student }}
         {% for error in form.student.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="col-6 col-md-2">
+        {{ form.adjunct }}
+        {% for error in form.adjunct.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
     </div>
     <div class="col-8 col-md-3">
         {{ form.external_name }}

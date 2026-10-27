@@ -38,4 +38,4 @@ class DissertationDefenseAdmin(admin.ModelAdmin):
     list_display = ['full_name', 'kind', 'defense_date', 'school', 'supervisor']
     list_filter = ['kind', 'school', DefenseYearFilter]
     search_fields = ['full_name', 'title']
-    autocomplete_fields = ['teacher', 'supervisor']
+    autocomplete_fields = ['teacher', 'adjunct', 'supervisor']

@@ -1,21 +1,17 @@
-from collections import Counter
-
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, ProtectedError, Q
+from django.db.models import Count, ProtectedError
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from apps.conferences.models import Report
 from apps.core.search import search
 from apps.core.views import RecordPermissionRequiredMixin
-from apps.ip.models import IntellectualProperty
-from apps.publications.models import Publication
-from apps.staff.models import AUTHORS_PREFETCH, SPEAKERS_PREFETCH, Teacher
+from apps.staff.models import Teacher
 
 from .forms import StudentAchievementForm, StudentForm
 from .models import Student, StudentAchievement
+from .works import works_context
 
 ALL_STATUSES = 'all'
 
@@ -79,31 +75,8 @@ class StudentDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        student = self.object
-        achievements = list(student.achievements.select_related('supervisor'))
-        publications = Publication.objects.filter(authors__student=student)
-        level_counts = Counter(achievement.level for achievement in achievements)
-        context.update({
-            'achievements': achievements,
-            'publications': publications.prefetch_related(*AUTHORS_PREFETCH),
-            'publication_stats': publications.aggregate(
-                total=Count('pk'),
-                vak=Count('pk', filter=~Q(vak='')),
-                rinc=Count('pk', filter=Q(rinc=True) | Q(rinc_core=True)),
-                scopus=Count('pk', filter=Q(scopus=True)),
-                wos=Count('pk', filter=Q(wos=True)),
-            ),
-            'achievement_levels': [
-                (label, level_counts[value]) for value, label in StudentAchievement.Level.choices
-            ],
-            'intellectual_properties': (
-                IntellectualProperty.objects.filter(authors__student=student).prefetch_related(*AUTHORS_PREFETCH)
-            ),
-            'reports': (
-                Report.objects.filter(speakers__student=student).select_related('conference')
-                .prefetch_related(*SPEAKERS_PREFETCH).order_by('-conference__start_date')
-            ),
-        })
+        achievements = list(self.object.achievements.select_related('supervisor'))
+        context.update(works_context(self.object, achievements))
         return context
 
 

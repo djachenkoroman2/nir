@@ -1,0 +1,8 @@
+{% extends 'adjuncts/includes/form_page.html' %}
+
+{% block page_title %}{% if object %}Изменение достижения{% else %}Новое достижение{% endif %}: {{ adjunct.short_name }}{% endblock %}
+{% block breadcrumbs %}
+    <li class="breadcrumb-item"><a href="{{ adjunct.get_absolute_url }}">{{ adjunct.short_name }}</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение достижения{% else %}Новое достижение{% endif %}</li>
+{% endblock %}
+{% block cancel_url %}{% if object.pk and object.get_absolute_url != adjunct.get_absolute_url %}{{ object.get_absolute_url }}{% else %}{{ adjunct.get_absolute_url }}{% endif %}{% endblock %}

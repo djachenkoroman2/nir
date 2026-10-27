@@ -3,7 +3,7 @@ from django.db import models
 from django.urls import reverse
 
 from apps.publications.models import Publication
-from apps.staff.models import AuthorBase
+from apps.staff.models import AuthorBase, author_lookup
 
 
 class Conference(models.Model):
@@ -78,8 +78,8 @@ class Report(models.Model):
     def get_absolute_url(self):
         return self.conference.get_absolute_url()
 
-    def is_authored_by(self, teacher):
-        return self.speakers.filter(teacher=teacher).exists()
+    def is_authored_by(self, person):
+        return self.speakers.filter(**author_lookup(person)).exists()
 
     @property
     def speakers_display(self):
@@ -100,5 +100,9 @@ class ReportSpeaker(AuthorBase):
             models.UniqueConstraint(
                 fields=['report', 'student'], condition=models.Q(student__isnull=False),
                 name='unique_report_student',
+            ),
+            models.UniqueConstraint(
+                fields=['report', 'adjunct'], condition=models.Q(adjunct__isnull=False),
+                name='unique_report_adjunct',
             ),
         ]

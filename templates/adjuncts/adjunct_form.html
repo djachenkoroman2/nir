@@ -1,0 +1,8 @@
+{% extends 'adjuncts/includes/form_page.html' %}
+
+{% block page_title %}{% if object %}Изменение данных адъюнкта{% else %}Новый адъюнкт{% endif %}{% endblock %}
+{% block breadcrumbs %}
+    {% if object %}<li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object.short_name }}</a></li>{% endif %}
+    <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение{% else %}Добавление{% endif %}</li>
+{% endblock %}
+{% block cancel_url %}{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'adjuncts:adjunct_list' %}{% endif %}{% endblock %}

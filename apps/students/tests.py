@@ -166,8 +166,9 @@ class StudentListTests(TestCase):
         for index in range(5):
             student = make_student(last_name=f'Курсант{index}', supervisor=self.supervisor)
             publication_with_student(student, f'Статья {index}')
-        # Сессия, пользователь, счётчик, два запроса прав, группы, руководители, страница — без запросов в цикле.
-        with self.assertNumQueries(8):
+        # Сессия, пользователь, счётчик, пункт «Мои задачи» в шапке, два запроса прав, группы, руководители,
+        # страница — без запросов в цикле.
+        with self.assertNumQueries(9):
             self.client.get(reverse('students:student_list'))
 
 

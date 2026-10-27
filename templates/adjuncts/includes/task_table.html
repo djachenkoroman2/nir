@@ -1,0 +1,35 @@
+{# Таблица задач. Параметры: tasks, show_adjunct (показывать столбец «Адъюнкт»). #}
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>Задача</th>
+                {% if show_adjunct %}<th>Адъюнкт</th>{% endif %}
+                <th>Статус</th>
+                <th class="d-none d-md-table-cell">Приоритет</th>
+                <th>Срок</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for task in tasks %}
+                <tr{% if task.is_overdue %} class="table-danger"{% endif %}>
+                    <td>
+                        <a href="{{ task.get_absolute_url }}">{{ task.title }}</a>
+                        {% if task.plan_stage %}<div class="small text-muted">Этап плана: {{ task.plan_stage.title|truncatechars:60 }}</div>{% endif %}
+                    </td>
+                    {% if show_adjunct %}<td><a href="{{ task.adjunct.get_absolute_url }}">{{ task.adjunct }}</a></td>{% endif %}
+                    <td><span class="badge {{ task.status_badge }}">{{ task.get_status_display }}</span></td>
+                    <td class="d-none d-md-table-cell"><span class="badge {{ task.priority_badge }}">{{ task.get_priority_display }}</span></td>
+                    <td class="text-nowrap">
+                        {{ task.due_date|date:'d.m.Y'|default:'—' }}
+                        {% if task.is_overdue %}<span class="badge text-bg-danger">просрочена</span>{% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Задач нет.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

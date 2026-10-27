@@ -6,6 +6,7 @@ from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 
 from apps.accounts.models import User
+from apps.adjuncts.models import Adjunct, Task, TaskComment
 from apps.core.management.commands._base import DOMAIN_MODELS
 from apps.core.management.commands.seed_demo import DEMO_PASSWORD
 from apps.publications.models import Publication
@@ -69,6 +70,33 @@ class SeedDemoTests(TestCase):
         ivanov = User.objects.get(username='ivanov').teacher
         self.assertTrue(StudentAchievement.objects.filter(student__supervisor=ivanov).exists())
 
+    def test_adjuncts_with_accounts_plans_tasks_and_defense(self):
+        run('seed_demo')
+        ivanov = User.objects.get(username='ivanov').teacher
+        for login in ('adjunct1', 'adjunct2'):
+            with self.subTest(login=login):
+                user = User.objects.get(username=login)
+                self.assertTrue(user.groups.filter(name='Адъюнкты').exists())
+                self.assertEqual(user.adjunct.supervisor, ivanov)
+                self.assertTrue(user.adjunct.plan_stages.exists())
+                self.assertTrue(user.adjunct.tasks.filter(comments__isnull=False).exists())
+        self.assertEqual(set(Task.objects.values_list('status', flat=True)), set(Task.Status.values))
+        self.assertTrue(any(task.is_overdue for task in Task.objects.all()))
+        self.assertTrue(TaskComment.objects.filter(is_system=True).exists())
+        self.assertTrue(Adjunct.objects.filter(status=Adjunct.Status.ACADEMIC_LEAVE).exists())
+        self.assertTrue(any(adjunct.term_expired for adjunct in Adjunct.objects.all()))
+        defended = Adjunct.objects.get(status=Adjunct.Status.DEFENDED)
+        self.assertTrue(defended.defenses.exists())
+        for model in DOMAIN_MODELS:
+            if hasattr(model, 'adjunct') and hasattr(model, 'order'):  # наследники AuthorBase
+                with self.subTest(model=model.__name__):
+                    self.assertTrue(model.objects.filter(adjunct__isnull=False).exists())
+        for adjunct in Adjunct.objects.filter(status=Adjunct.Status.STUDYING):
+            with self.subTest(adjunct=adjunct.last_name):
+                self.assertEqual(set(adjunct.plan_stages.values_list('study_year', flat=True)),
+                                 set(range(1, adjunct.study_years + 1)))
+                self.assertTrue(adjunct.achievements.exists())
+
     def test_school_indicators_are_not_empty(self):
         run('seed_demo')
         totals = indicator_totals(ScientificSchool.objects.filter(is_active=True), report_period())
@@ -126,7 +154,7 @@ class ClearDataTests(TestCase):
         output = run('clear_data', username='nobody', noinput=True)
         self.assertIn('не найден', output)
         self.assertTrue(Publication.objects.exists())
-        self.assertEqual(User.objects.count(), 5)
+        self.assertEqual(User.objects.count(), 7)  # admin, editor, 3 преподавателя, 2 адъюнкта
 
     def test_asks_for_confirmation(self):
 

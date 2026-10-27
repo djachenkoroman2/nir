@@ -1,0 +1,35 @@
+{# Достижения по годам. Параметры: achievements, can_change, can_delete, change_url, delete_url (имена маршрутов). #}
+{% regroup achievements by date.year as achievements_by_year %}
+{% for year_group in achievements_by_year %}
+    <h3 class="h6 mt-3 text-muted">{{ year_group.grouper }}</h3>
+    <div class="card shadow-sm">
+        <ul class="list-group list-group-flush">
+            {% for achievement in year_group.list %}
+                <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
+                    <div>
+                        <strong>{{ achievement.result|capfirst }}</strong> — {{ achievement.title }}
+                        <div class="small text-muted">
+                            {{ achievement.get_kind_display|capfirst }}, {{ achievement.get_level_display }} уровень,
+                            {{ achievement.date|date:'d.m.Y' }}{% if achievement.supervisor %}, руководитель
+                            <a href="{{ achievement.supervisor.get_absolute_url }}">{{ achievement.supervisor }}</a>{% endif %}
+                        </div>
+                        {% if achievement.document %}
+                            <div class="small">
+                                Документ:
+                                {% if achievement.document_is_link %}<a href="{{ achievement.document }}" target="_blank" rel="noopener">{{ achievement.document|truncatechars:80 }}</a>{% else %}{{ achievement.document }}{% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% if can_change or can_delete %}
+                        <div class="text-nowrap">
+                            {% if can_change %}<a href="{% url change_url achievement.pk %}" class="btn btn-link btn-sm p-0 me-2">Изменить</a>{% endif %}
+                            {% if can_delete %}<a href="{% url delete_url achievement.pk %}" class="btn btn-link btn-sm p-0 text-danger">Удалить</a>{% endif %}
+                        </div>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% empty %}
+    <div class="card shadow-sm"><div class="card-body text-muted">Достижений нет.</div></div>
+{% endfor %}

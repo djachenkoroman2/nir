@@ -155,4 +155,37 @@
         </ul>
     </div>
 {% endif %}
+
+<h2 class="h5 mt-4">Научное руководство адъюнктами <span class="text-muted fw-normal">({{ supervised_adjuncts|length }})</span></h2>
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>Адъюнкт</th><th>Курс</th><th>Статус</th>
+                {% if show_review_counts %}<th class="text-end">Задач на проверке</th>{% endif %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for adjunct in supervised_adjuncts %}
+                <tr>
+                    <td>
+                        <a href="{{ adjunct.get_absolute_url }}">{{ adjunct.full_name }}</a>
+                        <div class="small text-muted">{{ adjunct.dissertation_topic|truncatechars:90 }}</div>
+                    </td>
+                    <td>{% include 'adjuncts/includes/course.html' %}</td>
+                    <td><span class="badge {{ adjunct.status_badge }}">{{ adjunct.get_status_display }}</span></td>
+                    {% if show_review_counts %}
+                        <td class="text-end">
+                            {% if adjunct.review_task_count %}<a href="{% url 'adjuncts:adjunct_tasks' adjunct.pk %}?status=review" class="badge text-bg-warning text-decoration-none">{{ adjunct.review_task_count }}</a>{% else %}0{% endif %}
+                        </td>
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr><td colspan="4" class="text-center text-muted py-4">Не руководит адъюнктами.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}

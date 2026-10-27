@@ -1,0 +1,1 @@
+{# Курс адъюнкта с пометкой об истёкшем сроке. Параметр: adjunct. #}{% with course=adjunct.course %}{% if course %}{{ course }}{% if adjunct.term_expired %} <span class="badge text-bg-danger">срок обучения истёк</span>{% endif %}{% else %}<span class="text-muted">—</span>{% endif %}{% endwith %}

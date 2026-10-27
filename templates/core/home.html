@@ -6,6 +6,51 @@
     <p class="lead mb-0">Добро пожаловать в систему учёта показателей НИР кафедры.</p>
 </div>
 
+{% if my_adjunct %}
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header d-flex justify-content-between">
+                    <span>Ближайшие этапы плана</span>
+                    <a href="{{ my_adjunct.get_absolute_url }}#plan">Мой план</a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for stage in my_stages %}
+                        <li class="list-group-item">
+                            <span class="badge {{ stage.status_badge }}">{{ stage.get_status_display }}</span> {{ stage.title }}
+                            <div class="small {% if stage.is_overdue %}text-danger{% else %}text-muted{% endif %}">срок {{ stage.due_date|date:'d.m.Y' }}{% if stage.is_overdue %} — просрочен{% endif %}</div>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item text-muted">Невыполненных этапов нет.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header d-flex justify-content-between">
+                    <span>Мои открытые задачи</span>
+                    <a href="{% url 'tasks:my_tasks' %}">Все задачи</a>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for task in my_tasks %}
+                        <li class="list-group-item">
+                            <span class="badge {{ task.status_badge }}">{{ task.get_status_display }}</span>
+                            <a href="{{ task.get_absolute_url }}">{{ task.title }}</a>
+                            {% if task.due_date %}<div class="small {% if task.is_overdue %}text-danger{% else %}text-muted{% endif %}">срок {{ task.due_date|date:'d.m.Y' }}{% if task.is_overdue %} — просрочена{% endif %}</div>{% endif %}
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item text-muted">Открытых задач нет.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col-12">
+            <a href="{{ my_adjunct.get_absolute_url }}" class="btn btn-outline-primary">Моя карточка адъюнкта</a>
+        </div>
+    </div>
+{% endif %}
+
 <div class="row g-3">
     {% for section in sections %}
         <div class="col-12 col-md-6 col-lg-4">

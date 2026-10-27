@@ -6,13 +6,15 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.adjuncts.models import Adjunct, AdjunctAchievement, PlanStage, Task, TaskComment
+from apps.adjuncts.study import ACADEMIC_YEAR_START
 from apps.conferences.models import Conference, Report, ReportSpeaker
 from apps.ip.models import IntellectualProperty, IntellectualPropertyAuthor
 from apps.publications.models import Publication, PublicationAuthor
 from apps.research.models import Participant, ResearchProject
 from apps.schools.models import DissertationDefense, ScientificSchool
 from apps.schools.period import report_period
-from apps.staff.models import Teacher
+from apps.staff.models import Teacher, author_lookup
 from apps.students.models import Student, StudentAchievement
 
 from ._base import DevOnlyCommand, domain_counts, has_domain_data
@@ -124,6 +126,45 @@ ACHIEVEMENT_TITLES = {
 ACHIEVEMENT_RESULTS = ['диплом I степени', 'диплом II степени', 'диплом III степени', 'победитель', 'призёр',
                        'участник', 'лауреат']
 
+A = Adjunct.Status
+# Фамилия, имя, отчество, курс в текущем учебном году (по нему вычисляется год поступления), срок обучения,
+# статус, индекс руководителя в TEACHERS, логин демо-пользователя (или None).
+ADJUNCTS = [
+    ('Кравцов', 'Антон', 'Сергеевич', 3, 3, A.STUDYING, 0, 'adjunct1'),
+    ('Мельникова', 'Ирина', 'Олеговна', 2, 3, A.STUDYING, 0, 'adjunct2'),
+    ('Борисов', 'Денис', 'Алексеевич', 1, 4, A.STUDYING, 1, None),
+    ('Голубев', 'Станислав', 'Игоревич', 4, 3, A.STUDYING, 2, None),  # срок обучения истёк
+    ('Ефимова', 'Юлия', 'Викторовна', 2, 3, A.ACADEMIC_LEAVE, 1, None),
+    ('Сафонова', 'Елизавета', 'Романовна', 6, 3, A.GRADUATED, 3, None),
+    ('Рябов', 'Константин', 'Евгеньевич', 7, 3, A.DEFENDED, 0, None),  # связан с защитой диссертации
+]
+SPECIALTIES = ['2.3.6. Методы и системы защиты информации, информационная безопасность',
+               '2.3.5. Математическое и программное обеспечение вычислительных систем',
+               '1.2.2. Математическое моделирование, численные методы и комплексы программ']
+# Этапы индивидуального плана по годам обучения: вид, наименование, месяц и день срока в учебном году.
+PLAN_TEMPLATE = {
+    1: [(PlanStage.Kind.EXAM, 'Кандидатский экзамен по истории и философии науки', 1, 25),
+        (PlanStage.Kind.EXAM, 'Кандидатский экзамен по иностранному языку', 6, 20),
+        (PlanStage.Kind.PUBLICATION, 'Статья в журнале из перечня ВАК', 6, 30)],
+    2: [(PlanStage.Kind.EXAM, 'Кандидатский экзамен по научной специальности', 1, 30),
+        (PlanStage.Kind.CHAPTER, 'Глава 1: обзор и постановка задачи', 3, 31),
+        (PlanStage.Kind.APPROBATION, 'Доклад на всероссийской конференции', 5, 15)],
+    3: [(PlanStage.Kind.CHAPTER, 'Главы 2–3: методы и экспериментальные исследования', 12, 20),
+        (PlanStage.Kind.PUBLICATION, 'Статья в издании, индексируемом в Scopus', 3, 1),
+        (PlanStage.Kind.PRE_DEFENSE, 'Предзащита на заседании кафедры', 6, 10)],
+    4: [(PlanStage.Kind.OTHER, 'Подготовка документов к защите', 4, 30)],
+}
+TASK_TITLES = [
+    'Подготовить обзор литературы по теме диссертации', 'Оформить статью по требованиям журнала',
+    'Провести серию экспериментов на тестовом наборе данных', 'Подготовить презентацию к докладу',
+    'Исправить замечания к главе 1', 'Составить план второй главы', 'Подать тезисы на конференцию',
+    'Сравнить результаты с базовыми методами',
+]
+SUPERVISOR_COMMENTS = ['Посмотрите свежие работы за последние два года.', 'Срок можно сдвинуть на неделю.',
+                       'Хорошо, но добавьте сравнение с аналогами.', 'Жду черновик к следующей встрече.']
+ADJUNCT_COMMENTS = ['Начал(а) работу, черновик будет к пятнице.', 'Есть вопрос по структуре, обсудим на встрече?',
+                    'Загрузил(а) исправленную версию, прошу проверить.']
+
 
 class Command(DevOnlyCommand):
     help = 'Заполняет базу демонстрационными данными (все разделы) и создаёт демо-пользователей.'
@@ -157,6 +198,8 @@ class Command(DevOnlyCommand):
         self.stdout.write('  editor — редактор (группа «Редакторы НИР»)')
         for login, teacher in DemoData.demo_logins():
             self.stdout.write(f'  {login} — преподаватель {teacher} (группа «Преподаватели»)')
+        for login, adjunct in DemoData.adjunct_logins():
+            self.stdout.write(f'  {login} — адъюнкт {adjunct} (группа «Адъюнкты»), руководитель — ivanov')
 
 
 def save(obj):
@@ -175,6 +218,10 @@ class DemoData:
     @staticmethod
     def demo_logins():
         return [(login, f'{last} {first[0]}. {middle[0]}.') for last, first, middle, *_, login, _ in TEACHERS if login]
+
+    @staticmethod
+    def adjunct_logins():
+        return [(login, f'{last} {first[0]}. {middle[0]}.') for last, first, middle, *_, login in ADJUNCTS if login]
 
     # --- вспомогательное ---
 
@@ -203,9 +250,21 @@ class DemoData:
         own = [s for s in self.author_students if s.supervisor in teachers]
         return [*teachers, self.rnd.choice(own or self.author_students)]
 
+    def with_adjunct(self, teachers):
+        """Добавляет к авторам адъюнкта — подопечного кого-то из них, а если таких нет — любого."""
+        own = [a for a in self.author_adjuncts if a.supervisor in teachers]
+        return [*teachers, self.rnd.choice(own or self.author_adjuncts)]
+
+    def demo_user(self, username, group_name, **fields):
+        user, _ = User.objects.update_or_create(username=username, defaults=fields)
+        user.set_password(DEMO_PASSWORD)
+        user.save()
+        user.groups.add(Group.objects.get(name=group_name))
+        return user
+
     def add_authors(self, model, link_field, record, people, external_chance=0.3):
-        """people — преподаватели и курсанты в порядке авторов; иногда добавляется внешний автор."""
-        rows = [{'student' if isinstance(person, Student) else 'teacher': person} for person in people]
+        """people — преподаватели, курсанты и адъюнкты в порядке авторов; иногда добавляется внешний автор."""
+        rows = [author_lookup(person) for person in people]
         if self.rnd.random() < external_chance:
             rows.insert(self.rnd.randint(0, len(rows)), {'external_name': self.rnd.choice(EXTERNAL_AUTHORS)})
         for order, row in enumerate(rows, start=1):
@@ -219,6 +278,7 @@ class DemoData:
         self.create_schools()
         self.create_projects()
         self.create_students()
+        self.create_adjuncts()
         self.create_publications()
         self.create_intellectual_properties()
         self.create_conferences()
@@ -239,20 +299,11 @@ class DemoData:
         self.demo_teachers = [teacher for teacher, row in zip(self.teachers, TEACHERS) if row[6]]
 
     def create_users(self):
-        def demo_user(username, **fields):
-            user, _ = User.objects.update_or_create(username=username, defaults=fields)
-            user.set_password(DEMO_PASSWORD)
-            user.save()
-            return user
-
-        editor = demo_user('editor', first_name='Редактор', last_name='', is_staff=True)
-        editor.groups.add(Group.objects.get(name='Редакторы НИР'))
-        teachers_group = Group.objects.get(name='Преподаватели')
+        self.demo_user('editor', 'Редакторы НИР', first_name='Редактор', last_name='', is_staff=True)
         for teacher, row in zip(self.teachers, TEACHERS):
             if row[6]:
-                user = demo_user(row[6], first_name=teacher.first_name, last_name=teacher.last_name, is_staff=False)
-                user.groups.add(teachers_group)
-                teacher.user = user
+                teacher.user = self.demo_user(row[6], 'Преподаватели', first_name=teacher.first_name,
+                                              last_name=teacher.last_name, is_staff=False)
                 teacher.save()
 
     def create_schools(self):
@@ -336,6 +387,8 @@ class DemoData:
                 teachers[0] = demo
             if index % 4 == 1:
                 teachers = self.with_student(teachers)
+            if index % 5 == 2:
+                teachers = self.with_adjunct(teachers)
             self.add_authors(PublicationAuthor, 'publication', publication, teachers)
             self.link_schools(publication, index)
             if kind == Publication.Kind.THESES:
@@ -394,6 +447,8 @@ class DemoData:
             authors = self.pick_teachers(1, 3)
             if index in (1, 6):
                 authors = self.with_student(authors)
+            if index == 3:
+                authors = self.with_adjunct(authors)
             self.add_authors(IntellectualPropertyAuthor, 'intellectual_property', item, authors, external_chance=0.15)
             self.link_schools(item, index)
 
@@ -416,11 +471,13 @@ class DemoData:
                     form=self.rnd.choices(list(Report.Form), weights=[15, 70, 15])[0], publication=publication,
                 ))
                 if publication:
-                    speakers = [a.teacher or a.student for a in publication.authors.all() if not a.external_name]
+                    speakers = [a.person for a in publication.authors.all() if not a.external_name]
                 else:
                     speakers = self.pick_teachers(1, 2)
                     if self.rnd.random() < 0.3:
                         speakers = self.with_student(speakers)
+                    elif self.rnd.random() < 0.3:
+                        speakers = self.with_adjunct(speakers)
                 self.add_authors(ReportSpeaker, 'report', report, speakers, external_chance=0.2)
 
     def create_defenses(self):
@@ -437,8 +494,99 @@ class DemoData:
         for index, (full_name, teacher, kind) in enumerate(defenses):
             school = self.active_schools[index % len(self.active_schools)]
             year = self.last_year - index % 4 if index < 6 else self.year(recent_share=0.3)
+            adjunct = self.defended_adjunct if full_name == self.defended_adjunct.full_name else None
             save(DissertationDefense(
-                full_name=full_name, teacher=teacher, kind=kind, title=f'{self.rnd.choice(TITLE_PREFIXES)} — '
+                full_name=full_name, teacher=teacher, adjunct=adjunct, kind=kind,
+                title=adjunct.dissertation_topic if adjunct else f'{self.rnd.choice(TITLE_PREFIXES)} — '
                 f'{self.rnd.choice(TOPICS)}', defense_date=self.date_in(year), school=school,
-                supervisor=self.rnd.choice(list(school.leaders.all())),
+                supervisor=adjunct.supervisor if adjunct else self.rnd.choice(list(school.leaders.all())),
             ))
+
+    def create_adjuncts(self):
+        # Год поступления нынешнего первого курса: учебный год начинается 1 сентября.
+        started = (self.today.month, self.today.day) >= ACADEMIC_YEAR_START
+        first_course_year = self.today.year if started else self.today.year - 1
+        self.adjuncts = []
+        for index, (last, first, middle, course, years, status, supervisor_index, login) in enumerate(ADJUNCTS):
+            admission_year = first_course_year - (course - 1)
+            adjunct = save(Adjunct(
+                last_name=last, first_name=first, middle_name=middle, admission_year=admission_year,
+                dissertation_topic=f'{self.rnd.choice(TITLE_PREFIXES)} — {self.rnd.choice(TOPICS)}',
+                specialty=SPECIALTIES[index % len(SPECIALTIES)], study_years=years, status=status,
+                study_form=Adjunct.StudyForm.PART_TIME if years == 4 else Adjunct.StudyForm.FULL_TIME,
+                supervisor=self.teachers[supervisor_index], planned_defense_year=admission_year + years,
+                school=self.active_schools[0] if index in (0, 6) else self.rnd.choice(self.active_schools),
+                email=f'{login or "adjunct"}{index + 1}@demo-university.ru',
+            ))
+            if login:
+                adjunct.user = self.demo_user(login, 'Адъюнкты', first_name=first, last_name=last, is_staff=False)
+                adjunct.save()
+            self.adjuncts.append(adjunct)
+            if status == Adjunct.Status.STUDYING:
+                stages = self.create_plan(adjunct)
+                self.create_tasks(adjunct, stages, count=6 if index == 0 else self.rnd.randint(3, 5))
+                for _ in range(self.rnd.randint(1, 3)):
+                    kind = self.rnd.choice(list(AdjunctAchievement.Kind))
+                    save(AdjunctAchievement(
+                        adjunct=adjunct, kind=kind, level=self.rnd.choice(list(AdjunctAchievement.Level)),
+                        title=self.rnd.choice(ACHIEVEMENT_TITLES[kind]), result=self.rnd.choice(ACHIEVEMENT_RESULTS),
+                        date=self.date_in(self.rnd.randint(admission_year, self.today.year)),
+                    ))
+        self.defended_adjunct = self.adjuncts[-1]
+        self.author_adjuncts = [a for a in self.adjuncts if a.status != Adjunct.Status.EXPELLED]
+
+    def create_plan(self, adjunct):
+        """План на все годы обучения: прошедшие этапы чаще выполнены, будущие — запланированы."""
+        stages = []
+        for study_year in range(1, adjunct.study_years + 1):
+            for kind, title, month, day in PLAN_TEMPLATE[study_year]:
+                # Учебный год N идёт с сентября года «поступление + N − 1» по август следующего.
+                year = adjunct.admission_year + study_year - 1 + (0 if month >= 9 else 1)
+                due = datetime.date(year, month, day)
+                if due < self.today:
+                    status = PlanStage.Status.FAILED if self.rnd.random() < 0.1 else PlanStage.Status.DONE
+                elif due < self.today + datetime.timedelta(days=120):
+                    status = PlanStage.Status.IN_PROGRESS
+                else:
+                    status = PlanStage.Status.PLANNED
+                done = status == PlanStage.Status.DONE
+                stages.append(save(PlanStage(
+                    adjunct=adjunct, study_year=study_year, kind=kind, title=title, due_date=due, status=status,
+                    completed_date=due - datetime.timedelta(days=self.rnd.randint(0, 20)) if done else None,
+                    supervisor_note='Выполнено в срок.' if done and self.rnd.random() < 0.4 else '',
+                )))
+        return stages
+
+    def create_tasks(self, adjunct, stages, count):
+        """Задачи во всех статусах (часть просрочена) с обсуждением руководителя и адъюнкта."""
+        supervisor_user, adjunct_user = adjunct.supervisor.user, adjunct.user
+        statuses = [Task.Status.NEW, Task.Status.IN_PROGRESS, Task.Status.REVIEW, Task.Status.DONE,
+                    Task.Status.CANCELLED, Task.Status.IN_PROGRESS]
+        now = timezone.now()
+        for index, (status, title) in enumerate(zip(statuses[:count], self.rnd.sample(TASK_TITLES, count))):
+            created = now - datetime.timedelta(days=self.rnd.randint(10, 60))
+            # Каждая вторая открытая задача — со сроком в прошлом (просрочена).
+            overdue = status in Task.OPEN_STATUSES and index % 2 == 1
+            shift = -self.rnd.randint(3, 15) if overdue else self.rnd.randint(5, 40)
+            due = self.today + datetime.timedelta(days=shift)
+            task = Task(
+                adjunct=adjunct, title=title, created_by=supervisor_user, created_at=created, due_date=due,
+                priority=self.rnd.choice(list(Task.Priority)),
+                description=f'{title}. Результат обсудить на встрече.',
+                plan_stage=self.rnd.choice(stages) if self.rnd.random() < 0.5 else None,
+            )
+            task.set_status(status)
+            save(task)
+            moment = created
+            for author, texts in [(supervisor_user, SUPERVISOR_COMMENTS), (adjunct_user, ADJUNCT_COMMENTS)]:
+                if author is not None and self.rnd.random() < 0.8:
+                    moment += datetime.timedelta(hours=self.rnd.randint(2, 48))
+                    save(TaskComment(task=task, author=author, text=self.rnd.choice(texts), created_at=moment))
+            if status != Task.Status.NEW:
+                # Принимает и отменяет задачу руководитель, двигает по цепочке — адъюнкт (если у него есть вход).
+                by_supervisor = status in (Task.Status.DONE, Task.Status.CANCELLED) or adjunct_user is None
+                moment += datetime.timedelta(hours=self.rnd.randint(1, 24))
+                save(TaskComment(
+                    task=task, author=supervisor_user if by_supervisor else adjunct_user, is_system=True,
+                    created_at=moment, text=f'Смена статуса: {Task.Status.NEW.label} → {task.get_status_display()}',
+                ))

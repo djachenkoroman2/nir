@@ -7,8 +7,9 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.adjuncts.models import Adjunct, PlanStage, Task
 from apps.conferences.models import Conference, Report
-from apps.core.permissions import can_manage, get_teacher, is_editor
+from apps.core.permissions import can_manage, get_person, is_editor
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
 from apps.research.models import ResearchProject
@@ -51,8 +52,23 @@ def home(request):
             'text': f'Обучаются: {Student.objects.filter(status=Student.Status.STUDYING).count()}, '
                     f'достижений за {year} год: {StudentAchievement.objects.filter(date__year=year).count()}',
         },
+        {
+            'title': 'Адъюнктура', 'url': reverse('adjuncts:adjunct_list'),
+            'text': f'Обучаются: {Adjunct.objects.filter(status=Adjunct.Status.STUDYING).count()}',
+        },
     ]
-    return render(request, 'core/home.html', {'sections': sections})
+    context = {'sections': sections}
+    person = get_person(request.user)
+    if isinstance(person, Adjunct):
+        # Личный кабинет адъюнкта: ближайшие этапы плана и открытые задачи.
+        context.update({
+            'my_adjunct': person,
+            'my_stages': person.plan_stages.filter(
+                status__in=[PlanStage.Status.PLANNED, PlanStage.Status.IN_PROGRESS]
+            ).order_by('due_date')[:5],
+            'my_tasks': person.tasks.filter(status__in=Task.OPEN_STATUSES)[:5],
+        })
+    return render(request, 'core/home.html', context)
 
 
 class RecordPermissionRequiredMixin(PermissionRequiredMixin):
@@ -111,11 +127,11 @@ class InlineFormSetMixin:
 
 
 class AuthorFormSetMixin(InlineFormSetMixin):
-    """Формсет авторов: преподаватель (не редактор) обязан указать среди авторов себя."""
+    """Формсет авторов: преподаватель или адъюнкт (не редактор) обязан указать среди авторов себя."""
 
     def get_formset_kwargs(self):
         kwargs = super().get_formset_kwargs()
         user = self.request.user
         if not all(is_editor(user, perm) for perm in self.get_permission_required()):
-            kwargs['required_teacher'] = get_teacher(user)
+            kwargs['required_author'] = get_person(user)
         return kwargs

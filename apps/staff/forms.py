@@ -1,10 +1,11 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
+from apps.adjuncts.models import Adjunct
 from apps.core.forms import BootstrapFormMixin
 from apps.students.models import Student
 
-from .models import Teacher
+from .models import Teacher, author_lookup
 
 
 class TeacherForm(BootstrapFormMixin, forms.ModelForm):
@@ -32,11 +33,27 @@ def student_choices(current_student_id=None):
     return students.distinct()
 
 
+def adjunct_choices(current_adjunct_id=None):
+    """Адъюнкты, кроме отчисленных; уже выбранный (даже если отчислен) остаётся в списке."""
+    adjuncts = Adjunct.objects.exclude(status=Adjunct.Status.EXPELLED)
+    if current_adjunct_id:
+        adjuncts = adjuncts | Adjunct.objects.filter(pk=current_adjunct_id)
+    return adjuncts.distinct()
+
+
+# Поля строки автора, которые выбирают человека кафедры, и сообщения о его повторе.
+PERSON_FIELDS = {
+    'teacher': 'Один и тот же преподаватель указан несколько раз.',
+    'student': 'Один и тот же курсант указан несколько раз.',
+    'adjunct': 'Один и тот же адъюнкт указан несколько раз.',
+}
+
+
 class AuthorForm(BootstrapFormMixin, forms.ModelForm):
-    """Строка формсета авторов: преподаватель кафедры, курсант или внешний автор."""
+    """Строка формсета авторов: преподаватель кафедры, курсант, адъюнкт или внешний автор."""
 
     class Meta:
-        fields = ['teacher', 'student', 'external_name']
+        fields = ['teacher', 'student', 'adjunct', 'external_name']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -44,29 +61,31 @@ class AuthorForm(BootstrapFormMixin, forms.ModelForm):
         self.fields['teacher'].empty_label = '— преподаватель —'
         self.fields['student'].queryset = student_choices(self.instance.student_id)
         self.fields['student'].empty_label = '— курсант —'
+        self.fields['adjunct'].queryset = adjunct_choices(self.instance.adjunct_id)
+        self.fields['adjunct'].empty_label = '— адъюнкт —'
         self.fields['external_name'].widget.attrs['placeholder'] = 'или ФИО внешнего автора'
 
     def has_changed(self):
-        # Новая строка заполнена, если выбран преподаватель или курсант или вписано ФИО. Сравнение
-        # с initial не подходит: строку, заранее заполненную текущим преподавателем, Django счёл бы пустой.
+        # Новая строка заполнена, если выбран человек кафедры или вписано ФИО. Сравнение с initial
+        # не подходит: строку, заранее заполненную текущим пользователем, Django счёл бы пустой.
         if self.instance.pk or not self.is_bound:
             return super().has_changed()
-        return bool(
-            self['teacher'].value() or self['student'].value() or (self['external_name'].value() or '').strip()
-        )
+        external_name = (self['external_name'].value() or '').strip()
+        return any(self[field].value() for field in PERSON_FIELDS) or bool(external_name)
 
 
 class BaseAuthorFormSet(forms.BaseInlineFormSet):
-    """Проверяет, что указан хотя бы один автор, а преподаватели и курсанты не повторяются; сохраняет порядок строк."""
+    """Проверяет, что указан хотя бы один автор, а люди кафедры не повторяются; сохраняет порядок строк."""
 
     empty_error = 'Укажите хотя бы одного автора.'
-    missing_teacher_error = 'Укажите среди авторов себя: иначе вы не сможете изменять эту запись.'
+    missing_author_error = 'Укажите среди авторов себя: иначе вы не сможете изменять эту запись.'
 
-    def __init__(self, *args, required_teacher=None, **kwargs):
-        # required_teacher — преподаватель, который обязан остаться среди авторов (не редактор).
-        self.required_teacher = required_teacher
-        if required_teacher is not None and not getattr(kwargs.get('instance'), 'pk', None):
-            kwargs.setdefault('initial', [{'teacher': required_teacher.pk}])
+    def __init__(self, *args, required_author=None, **kwargs):
+        # required_author — преподаватель или адъюнкт, который обязан остаться среди авторов (не редактор).
+        self.required_author = required_author
+        if required_author is not None and not getattr(kwargs.get('instance'), 'pk', None):
+            [(field, person)] = author_lookup(required_author).items()
+            kwargs.setdefault('initial', [{field: person.pk}])
         super().__init__(*args, **kwargs)
 
     def _kept_forms(self):
@@ -84,14 +103,14 @@ class BaseAuthorFormSet(forms.BaseInlineFormSet):
         forms_ = list(self._kept_forms())
         if not forms_:
             raise ValidationError(self.empty_error)
-        teachers = [form.cleaned_data['teacher'] for form in forms_ if form.cleaned_data.get('teacher')]
-        if len(teachers) != len(set(teachers)):
-            raise ValidationError('Один и тот же преподаватель указан несколько раз.')
-        students = [form.cleaned_data['student'] for form in forms_ if form.cleaned_data.get('student')]
-        if len(students) != len(set(students)):
-            raise ValidationError('Один и тот же курсант указан несколько раз.')
-        if self.required_teacher is not None and self.required_teacher not in teachers:
-            raise ValidationError(self.missing_teacher_error)
+        people = set()
+        for field, duplicate_error in PERSON_FIELDS.items():
+            chosen = [form.cleaned_data[field] for form in forms_ if form.cleaned_data.get(field)]
+            if len(chosen) != len(set(chosen)):
+                raise ValidationError(duplicate_error)
+            people.update(chosen)
+        if self.required_author is not None and self.required_author not in people:
+            raise ValidationError(self.missing_author_error)
 
     def save(self, commit=True):
         saved = super().save(commit)

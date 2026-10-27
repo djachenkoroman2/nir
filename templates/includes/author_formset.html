@@ -2,7 +2,7 @@
 <h2 class="h5">{{ title|default:'Авторы' }}</h2>
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        <p class="form-text mt-0">В каждой строке выберите преподавателя кафедры или курсанта либо впишите ФИО внешнего автора. Порядок строк — порядок авторов.</p>
+        <p class="form-text mt-0">В каждой строке выберите преподавателя кафедры, курсанта или адъюнкта либо впишите ФИО внешнего автора. Порядок строк — порядок авторов.</p>
         {{ formset.management_form }}
         {% for error in formset.non_form_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
         <div id="author-forms">

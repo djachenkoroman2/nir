@@ -3,7 +3,7 @@ from django.db import models
 from django.urls import reverse
 
 from apps.research.models import ResearchProject
-from apps.staff.models import AuthorBase
+from apps.staff.models import AuthorBase, author_lookup
 
 
 class Publication(models.Model):
@@ -72,8 +72,8 @@ class Publication(models.Model):
     def get_absolute_url(self):
         return reverse('publications:publication_detail', args=[self.pk])
 
-    def is_authored_by(self, teacher):
-        return self.authors.filter(teacher=teacher).exists()
+    def is_authored_by(self, person):
+        return self.authors.filter(**author_lookup(person)).exists()
 
     @property
     def authors_display(self):
@@ -126,5 +126,9 @@ class PublicationAuthor(AuthorBase):
             models.UniqueConstraint(
                 fields=['publication', 'student'], condition=models.Q(student__isnull=False),
                 name='unique_publication_student',
+            ),
+            models.UniqueConstraint(
+                fields=['publication', 'adjunct'], condition=models.Q(adjunct__isnull=False),
+                name='unique_publication_adjunct',
             ),
         ]

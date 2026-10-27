@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'apps.conferences',
     'apps.schools',
     'apps.students',
+    'apps.adjuncts',
 ]
 
 MIDDLEWARE = [
@@ -80,6 +81,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'apps.adjuncts.context_processors.task_menu',
             ],
         },
     },

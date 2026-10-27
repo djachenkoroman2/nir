@@ -1,11 +1,14 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, ProtectedError
+from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
+from apps.adjuncts.access import is_task_editor
+from apps.adjuncts.models import Adjunct, Task
 from apps.conferences.models import Report
+from apps.core.permissions import get_teacher
 from apps.core.search import search
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
@@ -60,6 +63,14 @@ class TeacherDetailView(LoginRequiredMixin, DetailView):
         context['supervised_achievements'] = (
             StudentAchievement.objects.filter(supervisor=teacher).select_related('student')
         )
+        context['supervised_adjuncts'] = (
+            teacher.supervised_adjuncts.annotate(
+                review_task_count=Count('tasks', filter=Q(tasks__status=Task.Status.REVIEW))
+            ).order_by(*Adjunct._meta.ordering)
+        )
+        # Задачи не публичные: число задач на проверке видят сам руководитель и редакторы.
+        user = self.request.user
+        context['show_review_counts'] = is_task_editor(user) or get_teacher(user) == teacher
         return context
 
 
@@ -100,7 +111,7 @@ class TeacherDeleteView(RecordPermissionRequiredMixin, DeleteView):
             messages.error(
                 self.request,
                 'Нельзя удалить преподавателя, который участвует в НИОКР, публикациях, РИД или докладах '
-                'либо руководит научной работой курсантов. '
+                'либо руководит научной работой курсантов или адъюнктов. '
                 'Снимите отметку «работает на кафедре» вместо удаления.',
             )
             return redirect(self.object)

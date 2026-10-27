@@ -1,0 +1,4 @@
+{% extends 'includes/confirm_delete.html' %}
+
+{% block heading %}Удаление этапа плана{% endblock %}
+{% block question %}Удалить этап <strong>«{{ object.title }}»</strong> из плана адъюнкта {{ object.adjunct.full_name }}? Связанные задачи останутся без этапа.{% endblock %}
