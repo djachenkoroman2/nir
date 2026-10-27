@@ -1,11 +1,11 @@
-{# Таблица задач. Параметры: tasks, show_adjunct (показывать столбец «Адъюнкт»). #}
+{# Таблица задач. Параметры: tasks, show_person (показывать столбец «Исполнитель»: адъюнкт или курсант). #}
 <div class="card shadow-sm">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
             <tr>
                 <th>Задача</th>
-                {% if show_adjunct %}<th>Адъюнкт</th>{% endif %}
+                {% if show_person %}<th>Исполнитель</th>{% endif %}
                 <th>Статус</th>
                 <th class="d-none d-md-table-cell">Приоритет</th>
                 <th>Срок</th>
@@ -18,7 +18,12 @@
                         <a href="{{ task.get_absolute_url }}">{{ task.title }}</a>
                         {% if task.plan_stage %}<div class="small text-muted">Этап плана: {{ task.plan_stage.title|truncatechars:60 }}</div>{% endif %}
                     </td>
-                    {% if show_adjunct %}<td><a href="{{ task.adjunct.get_absolute_url }}">{{ task.adjunct }}</a></td>{% endif %}
+                    {% if show_person %}
+                        <td>
+                            <a href="{{ task.person.get_absolute_url }}">{{ task.person }}</a>
+                            <span class="badge text-bg-light border">{% if task.student_id %}курсант{% else %}адъюнкт{% endif %}</span>
+                        </td>
+                    {% endif %}
                     <td><span class="badge {{ task.status_badge }}">{{ task.get_status_display }}</span></td>
                     <td class="d-none d-md-table-cell"><span class="badge {{ task.priority_badge }}">{{ task.get_priority_display }}</span></td>
                     <td class="text-nowrap">

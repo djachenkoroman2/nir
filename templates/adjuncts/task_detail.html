@@ -6,9 +6,9 @@
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'adjuncts:adjunct_list' %}">Адъюнктура</a></li>
-        <li class="breadcrumb-item"><a href="{{ adjunct.get_absolute_url }}">{{ adjunct.short_name }}</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'adjuncts:adjunct_tasks' adjunct.pk %}">Задачи</a></li>
+        <li class="breadcrumb-item"><a href="{{ section_url }}">{{ section_title }}</a></li>
+        <li class="breadcrumb-item"><a href="{{ owner.get_absolute_url }}">{{ owner.short_name }}</a></li>
+        <li class="breadcrumb-item"><a href="{{ tasks_url }}">Задачи</a></li>
         <li class="breadcrumb-item active" aria-current="page">{{ task.title|truncatechars:60 }}</li>
     </ol>
 </nav>
@@ -27,7 +27,7 @@
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <dl class="row mb-3">
-            <dt class="col-sm-3">Адъюнкт</dt><dd class="col-sm-9"><a href="{{ adjunct.get_absolute_url }}">{{ adjunct.full_name }}</a></dd>
+            <dt class="col-sm-3">{{ owner_label }}</dt><dd class="col-sm-9"><a href="{{ owner.get_absolute_url }}">{{ owner.full_name }}</a></dd>
             <dt class="col-sm-3">Статус</dt>
             <dd class="col-sm-9">
                 <span class="badge {{ task.status_badge }}">{{ task.get_status_display }}</span>

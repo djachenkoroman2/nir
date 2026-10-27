@@ -19,5 +19,5 @@ urlpatterns = [
     path('achievements/<int:pk>/edit/', views.AchievementUpdateView.as_view(), name='achievement_update'),
     path('achievements/<int:pk>/delete/', views.AchievementDeleteView.as_view(), name='achievement_delete'),
     path('<int:adjunct_pk>/tasks/', views.AdjunctTaskListView.as_view(), name='adjunct_tasks'),
-    path('<int:adjunct_pk>/tasks/add/', views.TaskCreateView.as_view(), name='task_create'),
+    path('<int:adjunct_pk>/tasks/add/', views.AdjunctTaskCreateView.as_view(), name='task_create'),
 ]

@@ -1,10 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, ProtectedError
+from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
+from apps.adjuncts.access import can_view_tasks
+from apps.adjuncts.models import Task
+from apps.adjuncts.views import tasks_context
 from apps.core.search import search
 from apps.core.views import RecordPermissionRequiredMixin
 from apps.staff.models import Teacher
@@ -40,6 +43,7 @@ class StudentListView(LoginRequiredMixin, ListView):
             .annotate(
                 publication_count=Count('publicationauthor', distinct=True),
                 achievement_count=Count('achievements', distinct=True),
+                open_task_count=Count('tasks', filter=Q(tasks__status__in=Task.OPEN_STATUSES), distinct=True),
             )
             .order_by(*Student._meta.ordering)
         )
@@ -56,8 +60,12 @@ class StudentListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        # Число открытых задач показываем только тем, кому видны задачи курсанта: руководителю и редакторам.
+        for student in context['student_list']:
+            student.show_tasks = can_view_tasks(self.request.user, student)
         context.update(self.get_filters())
         context.update({
+            'show_task_column': any(student.show_tasks for student in context['student_list']),
             'all_statuses': ALL_STATUSES,
             'status_choices': Student.Status.choices,
             'course_choices': range(1, 7),
@@ -77,6 +85,7 @@ class StudentDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         achievements = list(self.object.achievements.select_related('supervisor'))
         context.update(works_context(self.object, achievements))
+        context.update(tasks_context(self.request.user, self.object))
         return context
 
 

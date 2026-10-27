@@ -57,8 +57,10 @@ class TeacherDetailView(LoginRequiredMixin, DetailView):
         )
         # annotate с Count отменяет сортировку из Meta, поэтому задаём её явно.
         context['supervised_students'] = (
-            teacher.supervised_students.annotate(achievement_count=Count('achievements'))
-            .order_by(*Student._meta.ordering)
+            teacher.supervised_students.annotate(
+                achievement_count=Count('achievements', distinct=True),
+                open_task_count=Count('tasks', filter=Q(tasks__status__in=Task.OPEN_STATUSES), distinct=True),
+            ).order_by(*Student._meta.ordering)
         )
         context['supervised_achievements'] = (
             StudentAchievement.objects.filter(supervisor=teacher).select_related('student')
@@ -68,7 +70,8 @@ class TeacherDetailView(LoginRequiredMixin, DetailView):
                 review_task_count=Count('tasks', filter=Q(tasks__status=Task.Status.REVIEW))
             ).order_by(*Adjunct._meta.ordering)
         )
-        # Задачи не публичные: число задач на проверке видят сам руководитель и редакторы.
+        # Задачи не публичные: число задач адъюнктов на проверке и открытых задач курсантов
+        # видят сам руководитель и редакторы.
         user = self.request.user
         context['show_review_counts'] = is_task_editor(user) or get_teacher(user) == teacher
         return context

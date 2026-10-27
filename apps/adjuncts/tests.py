@@ -3,6 +3,7 @@ from unittest import mock
 
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -13,7 +14,7 @@ from apps.publications.forms import PublicationAuthorFormSet
 from apps.publications.models import Publication, PublicationAuthor
 from apps.schools.models import DissertationDefense, ScientificSchool
 from apps.staff.tests import make_editor, make_teacher
-from apps.students.tests import make_teacher_user
+from apps.students.tests import make_student, make_teacher_user
 
 from .models import Adjunct, AdjunctAchievement, PlanStage, Task, TaskComment
 from .study import academic_course
@@ -490,3 +491,227 @@ class QueryCountTests(TestCase):
         self.assertNotIn('Защитившийся', [a.last_name for a in response.context['adjunct_list']])
         response = self.client.get(reverse('adjuncts:adjunct_list'), {'status': 'defended'})
         self.assertEqual([a.last_name for a in response.context['adjunct_list']], ['Защитившийся'])
+
+
+def make_student_task(student, **kwargs):
+    return Task.objects.create(student=student, title=kwargs.pop('title', 'Задача курсанта'), **kwargs)
+
+
+class StudentTaskModelTests(TestCase):
+    def setUp(self):
+        self.supervisor = make_teacher()
+        self.adjunct = make_adjunct(self.supervisor)
+        self.student = make_student(supervisor=self.supervisor)
+
+    def test_exactly_one_assignee(self):
+        for fields in ({}, {'adjunct': self.adjunct, 'student': self.student}):
+            with self.subTest(fields=fields), self.assertRaises(ValidationError):
+                Task(title='Задача', **fields).full_clean()
+        Task(title='Задача', student=self.student).full_clean()
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Task.objects.create(title='Без исполнителя')
+
+    def test_student_task_has_no_plan_stage_and_review(self):
+        stage = PlanStage.objects.create(adjunct=self.adjunct, study_year=1, title='Экзамен', kind='exam',
+                                         due_date=timezone.localdate())
+        with self.assertRaises(ValidationError) as error:
+            Task(title='Задача', student=self.student, plan_stage=stage).full_clean()
+        self.assertIn('plan_stage', error.exception.message_dict)
+        with self.assertRaises(ValidationError) as error:
+            Task(title='Задача', student=self.student, status=Task.Status.REVIEW).full_clean()
+        self.assertIn('status', error.exception.message_dict)
+
+    def test_person_and_links(self):
+        task = make_student_task(self.student)
+        self.assertEqual(task.person, self.student)
+        self.assertTrue(task.is_supervised_by(self.supervisor))
+        self.assertFalse(task.is_authored_by(self.adjunct))
+
+    def test_deleting_student_removes_tasks(self):
+        task = make_student_task(self.student)
+        TaskComment.objects.create(task=task, text='Заметка')
+        self.student.delete()
+        self.assertFalse(Task.objects.exists())
+        self.assertFalse(TaskComment.objects.exists())
+
+
+class StudentTaskVisibilityTests(TestCase):
+    def setUp(self):
+        self.supervisor = make_teacher(last_name='Руководителев')
+        self.student = make_student(supervisor=self.supervisor)
+        self.task = make_student_task(self.student, title='Задача курсанта')
+        self.urls = [
+            self.task.get_absolute_url(),
+            reverse('tasks:task_update', args=[self.task.pk]),
+            reverse('students:student_tasks', args=[self.student.pk]),
+            reverse('students:task_create', args=[self.student.pk]),
+        ]
+
+    def test_hidden_from_other_teacher_and_adjunct(self):
+        other_teacher_user = make_teacher_user(make_teacher(last_name='Чужой'))
+        adjunct_user = make_adjunct_user(make_adjunct(self.supervisor))
+        for user in (other_teacher_user, adjunct_user):
+            self.client.force_login(user)
+            for url in self.urls:
+                with self.subTest(user=user.username, url=url):
+                    self.assertEqual(self.client.get(url).status_code, 404)
+            card = self.client.get(self.student.get_absolute_url())
+            self.assertNotContains(card, 'Задача курсанта')
+            self.assertFalse(card.context['show_tasks'])
+            self.assertNotContains(self.client.get(reverse('tasks:my_tasks')), 'Задача курсанта')
+
+    def test_supervisor_and_editor_see_and_manage(self):
+        for user in (make_teacher_user(self.supervisor), make_editor()):
+            self.client.force_login(user)
+            for url in self.urls:
+                with self.subTest(user=user.username, url=url):
+                    self.assertEqual(self.client.get(url).status_code, 200)
+            card = self.client.get(self.student.get_absolute_url())
+            self.assertContains(card, 'Задача курсанта')
+            self.assertContains(card, 'Поставить задачу')
+
+    def test_student_without_supervisor_only_for_editors(self):
+        self.student.supervisor = None
+        self.student.save()
+        self.client.force_login(make_teacher_user(self.supervisor))
+        self.assertEqual(self.client.get(self.task.get_absolute_url()).status_code, 404)
+        self.client.force_login(make_editor())
+        self.assertEqual(self.client.get(self.task.get_absolute_url()).status_code, 200)
+
+    def test_new_supervisor_sees_tasks(self):
+        new_supervisor = make_teacher(last_name='Новый')
+        self.student.supervisor = new_supervisor
+        self.student.save()
+        self.client.force_login(make_teacher_user(new_supervisor))
+        self.assertEqual(self.client.get(self.task.get_absolute_url()).status_code, 200)
+
+    def test_supervisor_creates_task_without_plan_stage(self):
+        self.client.force_login(make_teacher_user(self.supervisor))
+        url = reverse('students:task_create', args=[self.student.pk])
+        self.assertNotIn('plan_stage', self.client.get(url).context['form'].fields)
+        response = self.client.post(url, {'title': 'Подготовить тезисы', 'priority': Task.Priority.HIGH})
+        task = Task.objects.get(title='Подготовить тезисы')
+        self.assertRedirects(response, task.get_absolute_url())
+        self.assertEqual((task.student, task.adjunct, task.created_by.username), (self.student, None, 'teacher'))
+
+    def test_delete_redirects_to_student_tasks(self):
+        self.client.force_login(make_teacher_user(self.supervisor))
+        response = self.client.post(reverse('tasks:task_delete', args=[self.task.pk]))
+        self.assertRedirects(response, reverse('students:student_tasks', args=[self.student.pk]))
+
+
+class StudentTaskStatusTests(TestCase):
+    def setUp(self):
+        self.supervisor = make_teacher()
+        self.supervisor_user = make_teacher_user(self.supervisor)
+        self.task = make_student_task(make_student(supervisor=self.supervisor))
+        self.client.force_login(self.supervisor_user)
+
+    def change(self, status):
+        return self.client.post(reverse('tasks:task_status', args=[self.task.pk]), {'status': status})
+
+    def test_review_is_not_available(self):
+        response = self.client.get(self.task.get_absolute_url())
+        values = [value for value, _ in response.context['transitions']]
+        self.assertEqual(values, [Task.Status.IN_PROGRESS, Task.Status.DONE, Task.Status.CANCELLED])
+        self.assertEqual(self.change(Task.Status.REVIEW).status_code, 403)
+
+    def test_done_sets_completion_date_and_adds_system_comment(self):
+        self.change(Task.Status.DONE)
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.status, Task.Status.DONE)
+        self.assertIsNotNone(self.task.completed_at)
+        comment = self.task.comments.get()
+        self.assertTrue(comment.is_system)
+        self.assertEqual(comment.text, 'Смена статуса: новая → выполнена')
+
+    def test_status_filter_has_no_review(self):
+        response = self.client.get(reverse('students:student_tasks', args=[self.task.student_id]))
+        self.assertNotIn(Task.Status.REVIEW, [value for value, _ in response.context['status_choices']])
+
+
+class MixedTasksTests(TestCase):
+    def setUp(self):
+        self.supervisor = make_teacher()
+        self.supervisor_user = make_teacher_user(self.supervisor)
+        self.adjunct = make_adjunct(self.supervisor)
+        self.student = make_student(supervisor=self.supervisor)
+        self.yesterday = timezone.localdate() - datetime.timedelta(days=1)
+        make_task(self.adjunct, title='Задача адъюнкта', status=Task.Status.REVIEW)
+        make_student_task(self.student, title='Просроченная задача курсанта', due_date=self.yesterday)
+        make_student_task(self.student, title='Задача курсанта в срок')
+
+    def titles(self, **params):
+        response = self.client.get(reverse('tasks:my_tasks'), params)
+        return {task.title for task in response.context['tasks']}
+
+    def test_my_tasks_shows_adjuncts_and_students_with_kind_filter(self):
+        self.client.force_login(self.supervisor_user)
+        everything = {'Задача адъюнкта', 'Просроченная задача курсанта', 'Задача курсанта в срок'}
+        self.assertEqual(self.titles(), everything)
+        self.assertEqual(self.titles(kind='adjuncts'), {'Задача адъюнкта'})
+        self.assertEqual(self.titles(kind='students'), everything - {'Задача адъюнкта'})
+        self.assertEqual(self.titles(student=self.student.pk), everything - {'Задача адъюнкта'})
+        self.assertEqual(self.titles(kind='unknown'), everything)
+        response = self.client.get(reverse('tasks:my_tasks'))
+        self.assertContains(response, 'курсант</span>')
+        self.assertContains(response, 'name="kind"')
+
+    def test_counter_counts_review_and_overdue_student_tasks(self):
+        Task.objects.create(student=self.student, title='Выполненная просроченная', due_date=self.yesterday,
+                            status=Task.Status.DONE)
+        self.client.force_login(self.supervisor_user)
+        menu = self.client.get('/').context['task_menu']
+        self.assertEqual(menu['attention'], 2)
+        self.assertIn('курсантов', menu['title'])
+
+    def test_menu_for_teacher_with_students_only(self):
+        teacher = make_teacher(last_name='Безадъюнктов')
+        make_student(supervisor=teacher, last_name='Подопечный')
+        self.client.force_login(make_teacher_user(teacher, 'only_students'))
+        self.assertTrue(self.client.get('/').context['task_menu']['show'])
+
+    def test_student_list_and_teacher_card_show_open_tasks_to_supervisor_only(self):
+        self.client.force_login(self.supervisor_user)
+        response = self.client.get(reverse('students:student_list'))
+        row = response.context['student_list'][0]
+        self.assertEqual((row.open_task_count, row.show_tasks), (2, True))
+        card = self.client.get(self.supervisor.get_absolute_url())
+        self.assertEqual(card.context['supervised_students'][0].open_task_count, 2)
+        self.client.force_login(User.objects.create_user(username='reader'))
+        response = self.client.get(reverse('students:student_list'))
+        self.assertFalse(response.context['show_task_column'])
+
+    def test_student_task_page_breadcrumbs(self):
+        task = Task.objects.get(title='Задача курсанта в срок')
+        self.client.force_login(self.supervisor_user)
+        response = self.client.get(task.get_absolute_url())
+        self.assertContains(response, reverse('students:student_list'))
+        self.assertContains(response, reverse('students:student_tasks', args=[self.student.pk]))
+        self.assertContains(response, '<dt class="col-sm-3">Курсант</dt>', html=False)
+
+
+class MixedQueryCountTests(TestCase):
+    def setUp(self):
+        self.supervisor = make_teacher()
+        self.client.force_login(make_teacher_user(self.supervisor))
+
+    def add_rows(self, count):
+        for index in range(count):
+            make_task(make_adjunct(self.supervisor, last_name=f'Адъюнкт{index}'))
+            make_student_task(make_student(supervisor=self.supervisor, last_name=f'Курсант{index}'))
+
+    def count_queries(self, url):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        with CaptureQueriesContext(connection) as queries:
+            self.assertEqual(self.client.get(url).status_code, 200)
+        return len(queries)
+
+    def test_lists_do_not_query_per_row(self):
+        for url in (reverse('students:student_list'), reverse('tasks:my_tasks')):
+            with self.subTest(url=url):
+                self.add_rows(2)
+                few = self.count_queries(url)
+                self.add_rows(4)
+                self.assertEqual(self.count_queries(url), few)

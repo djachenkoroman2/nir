@@ -41,6 +41,9 @@
 
 {% include 'includes/person_summary.html' %}
 
+{# --- Задачи (только научному руководителю и редакторам) --- #}
+{% include 'adjuncts/includes/task_block.html' %}
+
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
     <h2 class="h5 mb-0" id="achievements">Достижения <span class="text-muted fw-normal">({{ achievements|length }})</span></h2>
     {% can user 'students.add_studentachievement' student as can_add_achievement %}{% if can_add_achievement %}

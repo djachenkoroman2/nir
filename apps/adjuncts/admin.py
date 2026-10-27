@@ -29,13 +29,31 @@ class TaskCommentInline(admin.TabularInline):
     extra = 0
 
 
+class AssigneeKindFilter(admin.SimpleListFilter):
+    title = 'исполнитель'
+    parameter_name = 'assignee'
+
+    def lookups(self, request, model_admin):
+        return [('adjunct', 'адъюнкт'), ('student', 'курсант')]
+
+    def queryset(self, request, queryset):
+        if self.value() in ('adjunct', 'student'):
+            return queryset.filter(**{f'{self.value()}__isnull': False})
+        return queryset
+
+
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ['title', 'adjunct', 'status', 'priority', 'due_date']
-    list_filter = ['status', 'priority', 'adjunct']
-    search_fields = ['title', 'description', 'adjunct__last_name']
-    autocomplete_fields = ['adjunct', 'created_by']
+    list_display = ['title', 'person', 'status', 'priority', 'due_date']
+    list_select_related = ['adjunct', 'student']
+    list_filter = [AssigneeKindFilter, 'status', 'priority', 'adjunct']
+    search_fields = ['title', 'description', 'adjunct__last_name', 'student__last_name']
+    autocomplete_fields = ['adjunct', 'student', 'created_by']
     inlines = [TaskCommentInline]
+
+    @admin.display(description='исполнитель')
+    def person(self, task):
+        return task.person
 
 
 @admin.register(AdjunctAchievement)

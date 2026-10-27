@@ -64,6 +64,7 @@
                 <th class="d-none d-md-table-cell">Статус</th>
                 <th class="text-end">Публикаций</th>
                 <th class="text-end">Достижений</th>
+                {% if show_task_column %}<th class="text-end">Открытых задач</th>{% endif %}
             </tr>
             </thead>
             <tbody>
@@ -78,9 +79,12 @@
                     <td class="d-none d-md-table-cell"><span class="badge {{ student.status_badge }}">{{ student.get_status_display }}</span></td>
                     <td class="text-end">{{ student.publication_count }}</td>
                     <td class="text-end">{{ student.achievement_count }}</td>
+                    {% if show_task_column %}
+                        <td class="text-end">{% if student.show_tasks %}<a href="{{ student.get_tasks_url }}">{{ student.open_task_count }}</a>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    {% endif %}
                 </tr>
             {% empty %}
-                <tr><td colspan="7" class="text-center text-muted py-4">Курсанты не найдены.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">Курсанты не найдены.</td></tr>
             {% endfor %}
             </tbody>
         </table>

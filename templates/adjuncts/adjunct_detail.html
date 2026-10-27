@@ -110,18 +110,7 @@
 {% endfor %}
 
 {# --- Задачи (только адъюнкту, руководителю и редакторам) --- #}
-{% if show_tasks %}
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 mb-2">
-        <h2 class="h5 mb-0" id="tasks">Открытые задачи <span class="text-muted fw-normal">({{ tasks|length }})</span></h2>
-        <div class="d-flex gap-2">
-            <a href="{% url 'adjuncts:adjunct_tasks' adjunct.pk %}?status=all" class="btn btn-outline-secondary btn-sm">Все задачи{% if closed_task_count %} (завершённых: {{ closed_task_count }}){% endif %}</a>
-            {% can user 'adjuncts.add_task' adjunct as can_add_task %}{% if can_add_task %}
-                <a href="{% url 'adjuncts:task_create' adjunct.pk %}" class="btn btn-outline-primary btn-sm">Поставить задачу</a>
-            {% endif %}
-        </div>
-    </div>
-    {% include 'adjuncts/includes/task_table.html' %}
-{% endif %}
+{% include 'adjuncts/includes/task_block.html' %}
 
 {# --- Достижения --- #}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 mb-2">

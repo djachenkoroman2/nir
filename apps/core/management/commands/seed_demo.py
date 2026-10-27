@@ -162,6 +162,13 @@ TASK_TITLES = [
 ]
 SUPERVISOR_COMMENTS = ['Посмотрите свежие работы за последние два года.', 'Срок можно сдвинуть на неделю.',
                        'Хорошо, но добавьте сравнение с аналогами.', 'Жду черновик к следующей встрече.']
+STUDENT_TASK_TITLES = [
+    'Подготовить тезисы на студенческую конференцию', 'Сделать обзор статей по теме курсовой работы',
+    'Подготовить заявку на конкурс НИРС', 'Реализовать прототип программы', 'Оформить отчёт по НИР',
+    'Подготовить доклад на заседание кружка', 'Провести эксперимент и описать результаты',
+]
+STUDENT_TASK_COMMENTS = ['Обсудили на кружке, курсант приступил.', 'Черновик получен, нужны правки по оформлению.',
+                         'Курсант просит перенести срок из-за сессии.', 'Результаты обсудим на консультации.']
 ADJUNCT_COMMENTS = ['Начал(а) работу, черновик будет к пятнице.', 'Есть вопрос по структуре, обсудим на встрече?',
                     'Загрузил(а) исправленную версию, прошу проверить.']
 
@@ -283,6 +290,7 @@ class DemoData:
         self.create_intellectual_properties()
         self.create_conferences()
         self.create_defenses()
+        self.create_student_tasks()
 
     def create_teachers(self):
         self.teachers = []
@@ -590,3 +598,43 @@ class DemoData:
                     task=task, author=supervisor_user if by_supervisor else adjunct_user, is_system=True,
                     created_at=moment, text=f'Смена статуса: {Task.Status.NEW.label} → {task.get_status_display()}',
                 ))
+
+    def create_student_tasks(self):
+        """Задачи курсантов: их ведёт руководитель — статусы и заметки о ходе работы пишет он сам."""
+        studying = [s for s in self.students if s.status == Student.Status.STUDYING and s.supervisor]
+        ivanov = self.demo_teachers[0]
+        # Подопечные ivanov — обязательно, чтобы демо-преподавателю было что вести; плюс несколько чужих.
+        own = [student for student in studying if student.supervisor == ivanov][:3]
+        others = self.rnd.sample([student for student in studying if student.supervisor != ivanov], 3)
+        statuses = list(Task.STUDENT_STATUSES)
+        now = timezone.now()
+        for index, student in enumerate(own + others):
+            supervisor_user = student.supervisor.user
+            count = self.rnd.randint(2, 4)
+            # У первого курсанта ivanov — все статусы; дальше — случайные.
+            task_statuses = statuses if index == 0 else self.rnd.choices(statuses, weights=[3, 4, 2, 1], k=count)
+            for number, (status, title) in enumerate(
+                zip(task_statuses, self.rnd.sample(STUDENT_TASK_TITLES, len(task_statuses)))
+            ):
+                created = now - datetime.timedelta(days=self.rnd.randint(7, 50))
+                # Каждая вторая открытая задача — просрочена.
+                overdue = status in Task.OPEN_STATUSES and number % 2 == 0
+                shift = -self.rnd.randint(2, 12) if overdue else self.rnd.randint(5, 45)
+                task = Task(
+                    student=student, title=title, created_by=supervisor_user, created_at=created,
+                    due_date=self.today + datetime.timedelta(days=shift),
+                    priority=self.rnd.choice(list(Task.Priority)), description=f'{title}.',
+                )
+                task.set_status(status)
+                save(task)
+                if supervisor_user is None:
+                    continue
+                moment = created + datetime.timedelta(hours=self.rnd.randint(2, 72))
+                save(TaskComment(task=task, author=supervisor_user, created_at=moment,
+                                 text=self.rnd.choice(STUDENT_TASK_COMMENTS)))
+                if status != Task.Status.NEW:
+                    save(TaskComment(
+                        task=task, author=supervisor_user, is_system=True,
+                        created_at=moment + datetime.timedelta(hours=self.rnd.randint(1, 24)),
+                        text=f'Смена статуса: {Task.Status.NEW.label} → {task.get_status_display()}',
+                    ))

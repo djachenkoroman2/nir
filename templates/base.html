@@ -57,7 +57,7 @@
                     {% if task_menu.show %}
                         {% url 'tasks:my_tasks' as my_tasks_url %}
                         <a class="nav-link text-white{% if my_tasks_url in request.path %} fw-semibold{% endif %}" href="{{ my_tasks_url }}">
-                            Мои задачи{% if task_menu.attention %} <span class="badge text-bg-warning" title="Требуют внимания">{{ task_menu.attention }}</span>{% endif %}
+                            Мои задачи{% if task_menu.attention %} <span class="badge text-bg-warning" title="{{ task_menu.title }}">{{ task_menu.attention }}</span>{% endif %}
                         </a>
                     {% endif %}
                     <span class="navbar-text text-white">{{ user.get_full_name|default:user.username }}</span>

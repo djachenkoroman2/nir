@@ -1,0 +1,11 @@
+{# Блок открытых задач в карточке адъюнкта или курсанта. Параметры — из tasks_context(): show_tasks, tasks, owner, ... #}
+{% if show_tasks %}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 mb-2">
+        <h2 class="h5 mb-0" id="tasks">Открытые задачи <span class="text-muted fw-normal">({{ tasks|length }})</span></h2>
+        <div class="d-flex gap-2">
+            <a href="{{ tasks_url }}?status=all" class="btn btn-outline-secondary btn-sm">Все задачи{% if closed_task_count %} (завершённых: {{ closed_task_count }}){% endif %}</a>
+            {% if can_add_task %}<a href="{{ add_task_url }}" class="btn btn-outline-primary btn-sm">Поставить задачу</a>{% endif %}
+        </div>
+    </div>
+    {% include 'adjuncts/includes/task_table.html' %}
+{% endif %}

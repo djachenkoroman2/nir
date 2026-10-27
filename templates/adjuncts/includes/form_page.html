@@ -1,12 +1,13 @@
 {% extends 'base.html' %}
-{# Общая страница формы раздела. Блоки: page_title, breadcrumbs, cancel_url. Поля выводятся по порядку. #}
+{# Общая страница формы раздела. Блоки: page_title, breadcrumbs, cancel_url. Поля выводятся по порядку.
+   Раздел в заголовке и крошках — section_title и section_url из контекста (по умолчанию «Адъюнктура»). #}
 
-{% block title %}Адъюнктура — {{ block.super }}{% endblock %}
+{% block title %}{{ section_title|default:'Адъюнктура' }} — {{ block.super }}{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'adjuncts:adjunct_list' %}">Адъюнктура</a></li>
+        <li class="breadcrumb-item"><a href="{% if section_url %}{{ section_url }}{% else %}{% url 'adjuncts:adjunct_list' %}{% endif %}">{{ section_title|default:'Адъюнктура' }}</a></li>
         {% block breadcrumbs %}{% endblock %}
     </ol>
 </nav>

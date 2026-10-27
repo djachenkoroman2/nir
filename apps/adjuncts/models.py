@@ -4,11 +4,12 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.staff.models import ProtectedRelationsMixin, Teacher
-from apps.students.models import AchievementBase
+from apps.students.models import AchievementBase, Student
 
 from .study import academic_course
 
@@ -80,6 +81,9 @@ class Adjunct(ProtectedRelationsMixin, models.Model):
 
     def get_absolute_url(self):
         return reverse('adjuncts:adjunct_detail', args=[self.pk])
+
+    def get_tasks_url(self):
+        return reverse('adjuncts:adjunct_tasks', args=[self.pk])
 
     def clean(self):
         if self.user_id and Teacher.objects.filter(user_id=self.user_id).exists():
@@ -199,8 +203,8 @@ class PlanStage(AdjunctOwnedMixin, models.Model):
         return self.status in (self.Status.PLANNED, self.Status.IN_PROGRESS) and self.due_date < timezone.localdate()
 
 
-class Task(AdjunctOwnedMixin, models.Model):
-    """Задача, которую научный руководитель ставит адъюнкту."""
+class Task(models.Model):
+    """Задача, которую научный руководитель ставит адъюнкту или курсанту (исполнитель — ровно один из них)."""
 
     class Priority(models.IntegerChoices):
         LOW = 1, 'низкий'
@@ -215,6 +219,8 @@ class Task(AdjunctOwnedMixin, models.Model):
         CANCELLED = 'cancelled', 'отменена'
 
     OPEN_STATUSES = (Status.NEW, Status.IN_PROGRESS, Status.REVIEW)
+    # У курсанта нет учётной записи: задачу ведёт руководитель, поэтому «на проверке» не нужна.
+    STUDENT_STATUSES = (Status.NEW, Status.IN_PROGRESS, Status.DONE, Status.CANCELLED)
     # Переходы, доступные самому адъюнкту; руководитель и редактор переводят задачу в любой статус.
     ADJUNCT_TRANSITIONS = {
         Status.NEW: [Status.IN_PROGRESS],
@@ -231,7 +237,12 @@ class Task(AdjunctOwnedMixin, models.Model):
     PRIORITY_BADGES = {Priority.LOW: 'text-bg-light border', Priority.NORMAL: 'text-bg-light border',
                        Priority.HIGH: 'text-bg-danger'}
 
-    adjunct = models.ForeignKey(Adjunct, verbose_name='адъюнкт', on_delete=models.CASCADE, related_name='tasks')
+    adjunct = models.ForeignKey(
+        Adjunct, verbose_name='адъюнкт', on_delete=models.CASCADE, null=True, blank=True, related_name='tasks'
+    )
+    student = models.ForeignKey(
+        Student, verbose_name='курсант', on_delete=models.CASCADE, null=True, blank=True, related_name='tasks'
+    )
     title = models.CharField('заголовок', max_length=300)
     description = models.TextField('описание', blank=True)
     created_by = models.ForeignKey(
@@ -251,6 +262,14 @@ class Task(AdjunctOwnedMixin, models.Model):
         verbose_name = 'задача'
         verbose_name_plural = 'задачи'
         ordering = [models.F('due_date').asc(nulls_last=True), '-priority', 'pk']
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(adjunct__isnull=False, student__isnull=True)
+                | Q(adjunct__isnull=True, student__isnull=False),
+                name='task_single_assignee',
+                violation_error_message='У задачи должен быть ровно один исполнитель: адъюнкт или курсант.',
+            ),
+        ]
 
     def __str__(self):
         return self.title
@@ -259,8 +278,32 @@ class Task(AdjunctOwnedMixin, models.Model):
         return reverse('tasks:task_detail', args=[self.pk])
 
     def clean(self):
-        if self.plan_stage_id and self.adjunct_id and self.plan_stage.adjunct_id != self.adjunct_id:
-            raise ValidationError({'plan_stage': 'Этап относится к плану другого адъюнкта.'})
+        if (self.adjunct_id is None) == (self.student_id is None):
+            raise ValidationError('У задачи должен быть ровно один исполнитель: адъюнкт или курсант.')
+        if self.plan_stage_id:
+            if self.student_id:
+                raise ValidationError({'plan_stage': 'У задачи курсанта не бывает этапа плана.'})
+            if self.plan_stage.adjunct_id != self.adjunct_id:
+                raise ValidationError({'plan_stage': 'Этап относится к плану другого адъюнкта.'})
+        if self.status not in self.statuses:
+            raise ValidationError({'status': f'Статус «{self.get_status_display()}» недоступен для этой задачи.'})
+
+    @property
+    def person(self):
+        """Исполнитель: адъюнкт или курсант."""
+        return self.adjunct if self.adjunct_id else self.student
+
+    @property
+    def statuses(self):
+        """Статусы, допустимые для задачи этого исполнителя."""
+        return self.STUDENT_STATUSES if self.student_id else tuple(self.Status)
+
+    def is_supervised_by(self, teacher):
+        return self.person.is_supervised_by(teacher)
+
+    def is_authored_by(self, person):
+        # Сам с задачей работает только адъюнкт: у курсанта нет учётной записи.
+        return self.adjunct_id is not None and self.adjunct.is_authored_by(person)
 
     def set_status(self, status):
         """Меняет статус; дата завершения заполняется при переходе в «выполнена» и сбрасывается иначе."""

@@ -14,6 +14,7 @@ from apps.core.permissions import can_manage, get_person, is_editor, is_owned_by
 from apps.core.search import search
 from apps.core.views import RecordPermissionRequiredMixin
 from apps.staff.models import Teacher
+from apps.students.models import Student
 from apps.students.works import works_context
 
 from .access import allowed_transitions, can_view_tasks, is_task_editor, visible_tasks
@@ -108,10 +109,7 @@ class AdjunctDetailView(LoginRequiredMixin, DetailView):
             'is_own_card': person is not None and adjunct.is_authored_by(person),
             'defenses': adjunct.defenses.select_related('school'),
         })
-        context['show_tasks'] = can_view_tasks(user, adjunct)
-        if context['show_tasks']:
-            context['tasks'] = adjunct.tasks.filter(status__in=Task.OPEN_STATUSES).select_related('plan_stage')
-            context['closed_task_count'] = adjunct.tasks.exclude(status__in=Task.OPEN_STATUSES).count()
+        context.update(tasks_context(user, adjunct))
         return context
 
 
@@ -271,25 +269,81 @@ class AchievementDeleteView(AdjunctChildMixin, RecordPermissionRequiredMixin, De
     success_message = 'Достижение удалено.'
 
 
-def get_visible_adjunct(user, pk):
-    """Адъюнкт, чьи задачи видит пользователь; для остальных задач как будто нет (404)."""
-    adjunct = get_object_or_404(Adjunct.objects.select_related('supervisor'), pk=pk)
-    if not can_view_tasks(user, adjunct):
+# Раздел исполнителя задач: заголовок и адрес раздела, подпись, имя адреса «Поставить задачу».
+OWNER_SECTIONS = {
+    Adjunct: ('Адъюнктура', 'adjuncts:adjunct_list', 'Адъюнкт', 'adjuncts:task_create'),
+    Student: ('Курсанты', 'students:student_list', 'Курсант', 'students:task_create'),
+}
+
+
+def owner_context(owner):
+    """Исполнитель задач и раздел, к которому он относится (для заголовков, хлебных крошек и ссылок)."""
+    section_title, section_url, owner_label, add_task_url = OWNER_SECTIONS[type(owner)]
+    return {
+        'owner': owner,
+        'section_title': section_title,
+        'section_url': reverse(section_url),
+        'owner_label': owner_label,
+        'tasks_url': owner.get_tasks_url(),
+        'add_task_url': reverse(add_task_url, args=[owner.pk]),
+    }
+
+
+def tasks_context(user, owner):
+    """Блок задач в карточке адъюнкта или курсанта: открытые задачи — только тем, кому они видны."""
+    if not can_view_tasks(user, owner):
+        return {'show_tasks': False}
+    return {
+        **owner_context(owner),
+        'show_tasks': True,
+        'tasks': owner.tasks.filter(status__in=Task.OPEN_STATUSES).select_related('plan_stage'),
+        'closed_task_count': owner.tasks.exclude(status__in=Task.OPEN_STATUSES).count(),
+        'can_add_task': can_manage(user, 'adjuncts.add_task', owner),
+    }
+
+
+def get_visible_owner(user, model, pk):
+    """Адъюнкт или курсант, чьи задачи видит пользователь; для остальных задач как будто нет (404)."""
+    owner = get_object_or_404(model.objects.select_related('supervisor'), pk=pk)
+    if not can_view_tasks(user, owner):
         raise Http404
-    return adjunct
+    return owner
+
+
+class TaskOwnerMixin:
+    """Исполнитель задач берётся из адреса: <adjunct_pk> или <student_pk>."""
+
+    owner_model = Adjunct
+
+    def dispatch(self, request, *args, **kwargs):
+        self.owner = self.get_owner()
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_owner_pk(self):
+        return self.kwargs['adjunct_pk' if self.owner_model is Adjunct else 'student_pk']
+
+    def get_owner(self):
+        return get_object_or_404(self.owner_model.objects.select_related('supervisor'), pk=self.get_owner_pk())
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(owner_context(self.owner))
+        return context
 
 
 OPEN = 'open'
+ADJUNCTS, STUDENTS = 'adjuncts', 'students'
 
 
 class TaskFilterMixin:
     """Фильтр списка задач по статусу: по умолчанию — открытые."""
 
     paginate_by = 30
+    statuses = tuple(Task.Status)
 
     def get_status_filter(self):
         status = self.request.GET.get('status', OPEN)
-        return status if status in (OPEN, ALL, *Task.Status.values) else OPEN
+        return status if status in (OPEN, ALL, *self.statuses) else OPEN
 
     def filter_status(self, tasks):
         status = self.get_status_filter()
@@ -303,57 +357,99 @@ class TaskFilterMixin:
         context = super().get_context_data(**kwargs)
         context.update({
             'status': self.get_status_filter(),
-            'status_choices': [(OPEN, 'Открытые'), *((v, label.capitalize()) for v, label in Task.Status.choices),
-                               (ALL, 'Все')],
+            'status_choices': [
+                (OPEN, 'Открытые'), *((status.value, status.label.capitalize()) for status in self.statuses),
+                (ALL, 'Все'),
+            ],
         })
         return context
 
 
-class AdjunctTaskListView(LoginRequiredMixin, TaskFilterMixin, ListView):
-    """Задачи одного адъюнкта."""
+class OwnerTaskListView(LoginRequiredMixin, TaskOwnerMixin, TaskFilterMixin, ListView):
+    """Задачи одного адъюнкта или курсанта."""
 
-    template_name = 'adjuncts/adjunct_tasks.html'
+    template_name = 'adjuncts/owner_tasks.html'
     context_object_name = 'tasks'
 
+    def get_owner(self):
+        return get_visible_owner(self.request.user, self.owner_model, self.get_owner_pk())
+
+    @property
+    def statuses(self):
+        return Task.STUDENT_STATUSES if self.owner_model is Student else tuple(Task.Status)
+
     def get_queryset(self):
-        self.adjunct = get_visible_adjunct(self.request.user, self.kwargs['adjunct_pk'])
-        return self.filter_status(self.adjunct.tasks.select_related('plan_stage'))
+        return self.filter_status(self.owner.tasks.select_related('plan_stage'))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['adjunct'] = self.adjunct
-        context['can_add_task'] = can_manage(self.request.user, 'adjuncts.add_task', self.adjunct)
+        context['can_add_task'] = can_manage(self.request.user, 'adjuncts.add_task', self.owner)
         return context
 
 
+class AdjunctTaskListView(OwnerTaskListView):
+    owner_model = Adjunct
+
+
+class StudentTaskListView(OwnerTaskListView):
+    owner_model = Student
+
+
 class MyTaskListView(LoginRequiredMixin, TaskFilterMixin, ListView):
-    """«Мои задачи»: адъюнкту — его задачи, руководителю — задачи его адъюнктов, редактору — все."""
+    """«Мои задачи»: адъюнкту — его задачи, руководителю — задачи его адъюнктов и курсантов, редактору — все."""
 
     template_name = 'adjuncts/my_tasks.html'
     context_object_name = 'tasks'
+
+    def get_filters(self):
+        get = self.request.GET
+        kind = get.get('kind', ALL)
+        return {
+            'kind': kind if kind in (ADJUNCTS, STUDENTS) else ALL,
+            'adjunct': get.get('adjunct', ''),
+            'student': get.get('student', ''),
+        }
 
     def get_base_queryset(self):
         return visible_tasks(self.request.user)
 
     def get_queryset(self):
-        tasks = self.filter_status(self.get_base_queryset().select_related('adjunct', 'plan_stage'))
-        adjunct = self.request.GET.get('adjunct', '')
-        if adjunct.isdigit():
-            tasks = tasks.filter(adjunct_id=int(adjunct))
+        filters = self.get_filters()
+        tasks = self.filter_status(self.get_base_queryset().select_related('adjunct', 'student', 'plan_stage'))
+        if filters['kind'] == ADJUNCTS:
+            tasks = tasks.filter(adjunct__isnull=False)
+        elif filters['kind'] == STUDENTS:
+            tasks = tasks.filter(student__isnull=False)
+        if filters['adjunct'].isdigit():
+            tasks = tasks.filter(adjunct_id=int(filters['adjunct']))
+        if filters['student'].isdigit():
+            tasks = tasks.filter(student_id=int(filters['student']))
         return tasks
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['adjunct'] = self.request.GET.get('adjunct', '')
-        context['adjunct_choices'] = Adjunct.objects.filter(tasks__in=self.get_base_queryset()).distinct()
+        base = self.get_base_queryset()
+        context.update(self.get_filters())
+        context.update({
+            'kind_choices': [(ALL, 'Все исполнители'), (ADJUNCTS, 'Адъюнкты'), (STUDENTS, 'Курсанты')],
+            'adjunct_choices': Adjunct.objects.filter(tasks__in=base).distinct(),
+            'student_choices': Student.objects.filter(tasks__in=base).distinct(),
+        })
         return context
 
 
 class VisibleTaskMixin(LoginRequiredMixin):
-    """Задачу видят только адъюнкт, его руководитель и редакторы; остальным — 404."""
+    """Задачу видят только руководитель исполнителя, редакторы и сам адъюнкт; остальным — 404."""
 
     def get_queryset(self):
-        return visible_tasks(self.request.user).select_related('adjunct__supervisor', 'created_by', 'plan_stage')
+        return visible_tasks(self.request.user).select_related(
+            'adjunct__supervisor', 'student__supervisor', 'created_by', 'plan_stage'
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(owner_context(self.object.person))
+        return context
 
 
 class TaskDetailView(VisibleTaskMixin, DetailView):
@@ -366,7 +462,6 @@ class TaskDetailView(VisibleTaskMixin, DetailView):
         for comment in comments:
             comment.deletable = comment.can_be_deleted_by(user) and user.has_perm('adjuncts.delete_taskcomment')
         context.update({
-            'adjunct': task.adjunct,
             'comments': comments,
             'transitions': [(status, status.label) for status in allowed_transitions(user, task)],
             'comment_form': kwargs.get('comment_form') or TaskCommentForm(),
@@ -388,36 +483,35 @@ class TaskDetailView(VisibleTaskMixin, DetailView):
         return redirect(self.object.get_absolute_url() + '#comments')
 
 
-class TaskCreateView(RecordPermissionRequiredMixin, CreateView):
+class TaskCreateView(TaskOwnerMixin, RecordPermissionRequiredMixin, CreateView):
     model = Task
     form_class = TaskForm
     permission_required = 'adjuncts.add_task'
 
-    def dispatch(self, request, *args, **kwargs):
-        self.adjunct = get_object_or_404(Adjunct, pk=kwargs['adjunct_pk'])
-        return super().dispatch(request, *args, **kwargs)
-
     def handle_no_permission(self):
-        if self.request.user.is_authenticated and not can_view_tasks(self.request.user, self.adjunct):
+        if self.request.user.is_authenticated and not can_view_tasks(self.request.user, self.owner):
             raise Http404
         return super().handle_no_permission()
 
     def get_permission_object(self):
-        # Задачи ставят только руководитель адъюнкта и редакторы.
-        return self.adjunct
+        # Задачи ставят только руководитель исполнителя и редакторы.
+        return self.owner
 
     def get_form_kwargs(self):
-        return {**super().get_form_kwargs(), 'adjunct': self.adjunct}
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['adjunct'] = self.adjunct
-        return context
+        return {**super().get_form_kwargs(), 'owner': self.owner}
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         messages.success(self.request, 'Задача поставлена.')
         return super().form_valid(form)
+
+
+class AdjunctTaskCreateView(TaskCreateView):
+    owner_model = Adjunct
+
+
+class StudentTaskCreateView(TaskCreateView):
+    owner_model = Student
 
 
 class TaskUpdateView(VisibleTaskMixin, RecordPermissionRequiredMixin, UpdateView):
@@ -426,12 +520,7 @@ class TaskUpdateView(VisibleTaskMixin, RecordPermissionRequiredMixin, UpdateView
     permission_required = 'adjuncts.change_task'
 
     def get_form_kwargs(self):
-        return {**super().get_form_kwargs(), 'adjunct': self.object.adjunct}
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['adjunct'] = self.object.adjunct
-        return context
+        return {**super().get_form_kwargs(), 'owner': self.object.person}
 
     def form_valid(self, form):
         messages.success(self.request, 'Изменения сохранены.')
@@ -443,7 +532,7 @@ class TaskDeleteView(VisibleTaskMixin, RecordPermissionRequiredMixin, DeleteView
     permission_required = 'adjuncts.delete_task'
 
     def get_success_url(self):
-        return reverse('adjuncts:adjunct_tasks', args=[self.object.adjunct_id])
+        return self.object.person.get_tasks_url()
 
     def form_valid(self, form):
         messages.success(self.request, 'Задача удалена.')

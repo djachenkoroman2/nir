@@ -70,6 +70,15 @@ class SeedDemoTests(TestCase):
         ivanov = User.objects.get(username='ivanov').teacher
         self.assertTrue(StudentAchievement.objects.filter(student__supervisor=ivanov).exists())
 
+    def test_student_tasks(self):
+        run('seed_demo')
+        ivanov = User.objects.get(username='ivanov').teacher
+        tasks = Task.objects.filter(student__isnull=False)
+        self.assertTrue(tasks.filter(student__supervisor=ivanov, comments__isnull=False).exists())
+        self.assertTrue(tasks.exclude(student__supervisor=ivanov).exists())
+        self.assertEqual(set(tasks.values_list('status', flat=True)), set(Task.STUDENT_STATUSES))
+        self.assertTrue(any(task.is_overdue for task in tasks))
+
     def test_adjuncts_with_accounts_plans_tasks_and_defense(self):
         run('seed_demo')
         ivanov = User.objects.get(username='ivanov').teacher

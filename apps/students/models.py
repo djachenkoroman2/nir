@@ -42,6 +42,9 @@ class Student(ProtectedRelationsMixin, models.Model):
     def get_absolute_url(self):
         return reverse('students:student_detail', args=[self.pk])
 
+    def get_tasks_url(self):
+        return reverse('students:student_tasks', args=[self.pk])
+
     def is_supervised_by(self, teacher):
         return self.supervisor_id == teacher.pk
 

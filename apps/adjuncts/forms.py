@@ -63,10 +63,15 @@ class TaskForm(BootstrapFormMixin, forms.ModelForm):
         fields = ['title', 'description', 'due_date', 'priority', 'plan_stage']
         widgets = {'due_date': DateInput(), 'description': forms.Textarea(attrs={'rows': 4})}
 
-    def __init__(self, *args, adjunct, **kwargs):
+    def __init__(self, *args, owner, **kwargs):
+        """owner — исполнитель: адъюнкт или курсант (у курсанта нет плана работы)."""
         super().__init__(*args, **kwargs)
-        self.instance.adjunct = adjunct
-        self.fields['plan_stage'].queryset = adjunct.plan_stages.all()
+        if isinstance(owner, Adjunct):
+            self.instance.adjunct = owner
+            self.fields['plan_stage'].queryset = owner.plan_stages.all()
+        else:
+            self.instance.student = owner
+            del self.fields['plan_stage']
 
 
 class TaskCommentForm(BootstrapFormMixin, forms.ModelForm):
