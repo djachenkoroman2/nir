@@ -41,6 +41,8 @@
             {% endif %}
             <dt class="col-sm-4">Индексирование</dt>
             <dd class="col-sm-8">{% if publication.indexing %}{% include 'includes/indexing_badges.html' %}{% else %}—{% endif %}</dd>
+            <dt class="col-sm-4">Научные школы</dt>
+            <dd class="col-sm-8">{% for school in publication.schools.all %}<a href="{{ school.get_absolute_url }}">{{ school }}</a>{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
             <dt class="col-sm-4">НИОКР</dt>
             <dd class="col-sm-8">{% if publication.project %}<a href="{{ publication.project.get_absolute_url }}">{{ publication.project }}</a>{% else %}—{% endif %}</dd>
             {% if publication.report %}

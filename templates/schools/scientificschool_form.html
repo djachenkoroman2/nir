@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Изменение научной школы{% else %}Новая научная школа{% endif %} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'schools:school_list' %}">Научные школы</a></li>
+        {% if object %}<li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object.name|truncatechars:60 }}</a></li>{% endif %}
+        <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение{% else %}Добавление{% endif %}</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-3">{% if object %}Изменение научной школы{% else %}Новая научная школа{% endif %}</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+            {% include 'includes/form_field.html' with field=form.name %}
+            {% include 'includes/form_field.html' with field=form.description %}
+            {% include 'includes/form_field.html' with field=form.leaders %}
+            {% include 'includes/form_field.html' with field=form.is_active %}
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'schools:school_list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -12,6 +12,7 @@ from apps.core.permissions import can_manage, get_teacher, is_editor
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
 from apps.research.models import ResearchProject
+from apps.schools.models import ScientificSchool
 from apps.staff.models import Teacher
 
 
@@ -39,6 +40,10 @@ def home(request):
         {
             'title': 'Конференции', 'url': reverse('conferences:conference_list'),
             'text': f'Конференций: {Conference.objects.count()}, докладов: {Report.objects.count()}',
+        },
+        {
+            'title': 'Научные школы', 'url': reverse('schools:school_list'),
+            'text': f'Действующих: {ScientificSchool.objects.filter(is_active=True).count()}',
         },
     ]
     return render(request, 'core/home.html', {'sections': sections})

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load permissions %}
+
+{% block title %}Научные школы — {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Научные школы</h1>
+    <div class="d-flex gap-2 d-print-none">
+        <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Печать</button>
+        {% can user 'schools.add_scientificschool' as can_add %}{% if can_add %}
+            <a href="{% url 'schools:school_create' %}" class="btn btn-primary">Добавить школу</a>
+        {% endif %}
+    </div>
+</div>
+
+<ul class="nav nav-pills mb-3 d-print-none">
+    <li class="nav-item"><a class="nav-link{% if not show_all %} active{% endif %}" href="{% url 'schools:school_list' %}">Действующие</a></li>
+    <li class="nav-item"><a class="nav-link{% if show_all %} active{% endif %}" href="?all=1">Все</a></li>
+</ul>
+
+<p class="text-muted small">Показатели за {{ period }} годы считаются автоматически по данным разделов «Публикации», «РИД» и по защитам, указанным в карточках школ.</p>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0 small">
+            <thead class="table-light text-center align-middle">
+            <tr>
+                <th rowspan="2" class="text-start">Научное направление</th>
+                <th rowspan="2" class="text-start">Ведущие учёные кафедры</th>
+                <th colspan="3">Защищено диссертаций, {{ period }}</th>
+                <th rowspan="2">Монографии, {{ period }}</th>
+                <th rowspan="2">Главы в монографиях, {{ period }}</th>
+                <th rowspan="2">Публикации ВАК, {{ period }}</th>
+                <th rowspan="2">РИД, {{ period }}</th>
+            </tr>
+            <tr>
+                <th>канд.</th><th>докт.</th><th>всего</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for school in school_list %}
+                {% with url=school.get_absolute_url %}
+                <tr>
+                    <td>
+                        <a href="{{ url }}">{{ school.name }}</a>
+                        {% if not school.is_active %}<span class="badge text-bg-secondary ms-1">не действует</span>{% endif %}
+                    </td>
+                    <td>{% for leader in school.leaders.all %}<a href="{{ leader.get_absolute_url }}">{{ leader }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                    <td class="text-center"><a href="{{ url }}#defenses">{{ school.candidate_defenses }}</a></td>
+                    <td class="text-center"><a href="{{ url }}#defenses">{{ school.doctor_defenses }}</a></td>
+                    <td class="text-center fw-semibold"><a href="{{ url }}#defenses">{{ school.defenses_total }}</a></td>
+                    <td class="text-center"><a href="{{ url }}#monographs">{{ school.monographs }}</a></td>
+                    <td class="text-center"><a href="{{ url }}#monograph-chapters">{{ school.monograph_chapters }}</a></td>
+                    <td class="text-center"><a href="{{ url }}#vak">{{ school.vak_publications }}</a></td>
+                    <td class="text-center"><a href="{{ url }}#ip">{{ school.ip_total }}</a></td>
+                </tr>
+                {% endwith %}
+            {% empty %}
+                <tr><td colspan="9" class="text-center text-muted py-4">Научные школы не добавлены.</td></tr>
+            {% endfor %}
+            </tbody>
+            {% if school_list %}
+            <tfoot class="table-light fw-semibold">
+            <tr>
+                <td colspan="2">Итого по кафедре</td>
+                <td class="text-center">{{ totals.candidate_defenses }}</td>
+                <td class="text-center">{{ totals.doctor_defenses }}</td>
+                <td class="text-center">{{ totals.defenses_total }}</td>
+                <td class="text-center">{{ totals.monographs }}</td>
+                <td class="text-center">{{ totals.monograph_chapters }}</td>
+                <td class="text-center">{{ totals.vak_publications }}</td>
+                <td class="text-center">{{ totals.ip_total }}</td>
+            </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+<p class="text-muted small mt-2">В строке «Итого» публикация или РИД, относящиеся к нескольким школам, учитываются один раз.</p>
+{% endblock %}

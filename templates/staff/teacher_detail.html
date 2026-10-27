@@ -79,6 +79,10 @@
             <dt class="col-sm-4">E-mail</dt>
             <dd class="col-sm-8">{% if teacher.email %}<a href="mailto:{{ teacher.email }}">{{ teacher.email }}</a>{% else %}—{% endif %}</dd>
             <dt class="col-sm-4">Телефон</dt><dd class="col-sm-8">{{ teacher.phone|default:'—' }}</dd>
+            {% if teacher.led_schools.exists %}
+                <dt class="col-sm-4">Ведущий учёный научных школ</dt>
+                <dd class="col-sm-8">{% for school in teacher.led_schools.all %}<a href="{{ school.get_absolute_url }}">{{ school }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</dd>
+            {% endif %}
             {% if user.is_staff %}
                 <dt class="col-sm-4">Учётная запись</dt><dd class="col-sm-8 mb-0">{{ teacher.user.username|default:'—' }}</dd>
             {% endif %}

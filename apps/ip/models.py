@@ -25,6 +25,10 @@ class IntellectualProperty(models.Model):
         'правообладатель', max_length=300, blank=True, help_text='Например, наименование вуза.'
     )
     url = models.URLField('ссылка', max_length=500, blank=True, help_text='Например, на запись в реестре ФИПС.')
+    schools = models.ManyToManyField(
+        'schools.ScientificSchool', verbose_name='научные школы', blank=True, related_name='intellectual_properties',
+        help_text='Научные направления, к которым относится РИД.',
+    )
     project = models.ForeignKey(
         ResearchProject, verbose_name='НИОКР', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='intellectual_properties', help_text='Если РИД получен в рамках НИОКР.',

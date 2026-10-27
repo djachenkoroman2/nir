@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'apps.publications',
     'apps.ip',
     'apps.conferences',
+    'apps.schools',
 ]
 
 MIDDLEWARE = [

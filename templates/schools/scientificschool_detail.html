@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load permissions %}
+
+{% block title %}{{ scientificschool.name|truncatechars:60 }} — {{ block.super }}{% endblock %}
+
+{% block content %}
+{% with school=scientificschool %}
+<nav aria-label="breadcrumb" class="d-print-none">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'schools:school_list' %}">Научные школы</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ school.name|truncatechars:60 }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <h1 class="h3 mb-0">
+        {{ school.name }}
+        {% if not school.is_active %}<span class="badge text-bg-secondary fs-6 align-middle">не действует</span>{% endif %}
+    </h1>
+    {% can user 'schools.change_scientificschool' school as can_change %}{% can user 'schools.delete_scientificschool' school as can_delete %}
+    {% if can_change or can_delete %}
+        <div class="d-flex gap-2 d-print-none">
+            {% if can_change %}<a href="{% url 'schools:school_update' school.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
+            {% if can_delete %}<a href="{% url 'schools:school_delete' school.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        {% if school.description %}<p>{{ school.description|linebreaksbr }}</p>{% endif %}
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Ведущие учёные кафедры</dt>
+            <dd class="col-sm-8 mb-0">
+                {% for leader in school.leaders.all %}
+                    <a href="{{ leader.get_absolute_url }}">{{ leader.full_name }}</a>{% if leader.degree != 'none' %}, {{ leader.get_degree_display }}{% endif %}{% if not forloop.last %}<br>{% endif %}
+                {% empty %}—{% endfor %}
+            </dd>
+        </dl>
+    </div>
+</div>
+
+<h2 class="h5">Показатели за {{ period }} годы</h2>
+<div class="row g-2 mb-2 text-center">
+    <div class="col-6 col-md"><a href="#defenses" class="card card-body py-2 text-decoration-none"><div class="fs-4">{{ defenses|length }}</div><div class="small text-muted">защит диссертаций</div></a></div>
+    <div class="col-6 col-md"><a href="#monographs" class="card card-body py-2 text-decoration-none"><div class="fs-4">{{ monographs|length }}</div><div class="small text-muted">монографий</div></a></div>
+    <div class="col-6 col-md"><a href="#monograph-chapters" class="card card-body py-2 text-decoration-none"><div class="fs-4">{{ monograph_chapters|length }}</div><div class="small text-muted">глав в монографиях</div></a></div>
+    <div class="col-6 col-md"><a href="#vak" class="card card-body py-2 text-decoration-none"><div class="fs-4">{{ vak_publications|length }}</div><div class="small text-muted">публикаций ВАК</div></a></div>
+    <div class="col-6 col-md"><a href="#ip" class="card card-body py-2 text-decoration-none"><div class="fs-4">{{ intellectual_properties|length }}</div><div class="small text-muted">РИД</div></a></div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 mb-2">
+    <h2 class="h5 mb-0" id="defenses">Защиты диссертаций за {{ period }} <span class="text-muted fw-normal">({{ defenses|length }})</span></h2>
+    {% can user 'schools.add_dissertationdefense' as can_add_defense %}{% if can_add_defense %}
+        <a href="{% url 'schools:defense_create' school.pk %}" class="btn btn-outline-primary btn-sm d-print-none">Добавить защиту</a>
+    {% endif %}
+</div>
+{% can user 'schools.change_dissertationdefense' as can_change_defense %}{% can user 'schools.delete_dissertationdefense' as can_delete_defense %}
+{% include 'schools/includes/defense_table.html' with items=defenses %}
+{% if earlier_defenses %}
+    <h3 class="h6 mt-3 text-muted">Более ранние защиты (в показатели не входят)</h3>
+    {% include 'schools/includes/defense_table.html' with items=earlier_defenses %}
+{% endif %}
+
+{% include 'schools/includes/publication_items.html' with items=monographs anchor='monographs' title='Монографии за '|add:period %}
+{% include 'schools/includes/publication_items.html' with items=monograph_chapters anchor='monograph-chapters' title='Главы в монографиях за '|add:period %}
+{% include 'schools/includes/publication_items.html' with items=vak_publications anchor='vak' title='Публикации в изданиях ВАК за '|add:period %}
+
+<h2 class="h5 mt-4" id="ip">РИД за {{ period }} <span class="text-muted fw-normal">({{ intellectual_properties|length }})</span></h2>
+<div class="card shadow-sm">
+    <ul class="list-group list-group-flush">
+        {% for item in intellectual_properties %}
+            <li class="list-group-item">
+                <a href="{{ item.get_absolute_url }}">{{ item.title }}</a>
+                <div class="small text-muted">{{ item.get_kind_display|capfirst }} № {{ item.number }} от {{ item.registration_date|date:'d.m.Y' }}. {{ item.authors_display }}</div>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Нет за {{ period }} годы.</li>
+        {% endfor %}
+    </ul>
+</div>
+<p class="text-muted small mt-3 d-print-none">Публикации и РИД попадают в показатели школы, если в их карточке отмечена эта научная школа.</p>
+{% endwith %}
+{% endblock %}

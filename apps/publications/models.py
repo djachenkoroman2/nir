@@ -52,6 +52,10 @@ class Publication(models.Model):
     wos = models.BooleanField('Web of Science', default=False)
     quartile = models.CharField('квартиль', max_length=2, choices=Quartile.choices, blank=True)
 
+    schools = models.ManyToManyField(
+        'schools.ScientificSchool', verbose_name='научные школы', blank=True, related_name='publications',
+        help_text='Научные направления, к которым относится публикация.',
+    )
     project = models.ForeignKey(
         ResearchProject, verbose_name='НИОКР', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='publications', help_text='Если публикация — результат НИОКР.',

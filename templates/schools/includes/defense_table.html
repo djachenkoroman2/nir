@@ -1,0 +1,28 @@
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0 small">
+            <thead class="table-light">
+            <tr><th>ФИО</th><th>Вид</th><th>Тема</th><th>Дата</th><th>Руководитель</th>{% if can_change_defense or can_delete_defense %}<th class="d-print-none"></th>{% endif %}</tr>
+            </thead>
+            <tbody>
+            {% for defense in items %}
+                <tr>
+                    <td>{% if defense.teacher %}<a href="{{ defense.teacher.get_absolute_url }}">{{ defense.full_name }}</a>{% else %}{{ defense.full_name }}{% endif %}</td>
+                    <td>{{ defense.get_kind_display }}</td>
+                    <td>{{ defense.title }}</td>
+                    <td class="text-nowrap">{{ defense.defense_date|date:'d.m.Y' }}</td>
+                    <td>{% if defense.supervisor %}<a href="{{ defense.supervisor.get_absolute_url }}">{{ defense.supervisor }}</a>{% else %}—{% endif %}</td>
+                    {% if can_change_defense or can_delete_defense %}
+                        <td class="text-end text-nowrap d-print-none">
+                            {% if can_change_defense %}<a href="{% url 'schools:defense_update' defense.pk %}" class="btn btn-outline-secondary btn-sm">Изменить</a>{% endif %}
+                            {% if can_delete_defense %}<a href="{% url 'schools:defense_delete' defense.pk %}" class="btn btn-outline-danger btn-sm">Удалить</a>{% endif %}
+                        </td>
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-muted">Нет за {{ period }} годы.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

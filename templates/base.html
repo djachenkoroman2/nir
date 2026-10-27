@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
 </head>
 <body class="bg-light d-flex flex-column min-vh-100">
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary d-print-none">
     <div class="container">
         <a class="navbar-brand" href="{% url 'core:home' %}">НИР кафедры</a>
         {% if user.is_authenticated %}
@@ -37,6 +37,10 @@
                     <li class="nav-item">
                         <a class="nav-link{% if conferences_url in request.path %} active{% endif %}" href="{{ conferences_url }}">Конференции</a>
                     </li>
+                    {% url 'schools:school_list' as schools_url %}
+                    <li class="nav-item">
+                        <a class="nav-link{% if schools_url in request.path %} active{% endif %}" href="{{ schools_url }}">Научные школы</a>
+                    </li>
                     {% if user.is_staff %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Администрирование</a></li>
                     {% endif %}
@@ -55,7 +59,7 @@
 
 <main class="container py-4 flex-grow-1">
     {% for message in messages %}
-        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
+        <div class="d-print-none alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
         </div>
@@ -63,7 +67,7 @@
     {% block content %}{% endblock %}
 </main>
 
-<footer class="py-3 text-center text-muted small">
+<footer class="py-3 text-center text-muted small d-print-none">
     Система учёта показателей НИР кафедры
 </footer>
 <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>

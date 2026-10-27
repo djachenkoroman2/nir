@@ -1,0 +1,13 @@
+{% extends 'includes/confirm_delete.html' %}
+
+{% block heading %}Удаление научной школы{% endblock %}
+{% block question %}Удалить научную школу <strong>«{{ object.name }}»</strong>? Связи с публикациями и РИД будут сняты, сами записи останутся.{% endblock %}
+{% block warning %}
+    {% if delete_blocked %}
+        <div class="alert alert-warning">
+            К школе относятся защиты диссертаций, поэтому удалить её нельзя. Сначала удалите защиты или перенесите их
+            в другую школу (поле «Научная школа» в форме защиты). Если школа больше не работает, снимите отметку
+            «действующая» в <a href="{% url 'schools:school_update' object.pk %}">карточке школы</a>.
+        </div>
+    {% endif %}
+{% endblock %}
