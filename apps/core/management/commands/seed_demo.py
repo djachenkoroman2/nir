@@ -13,6 +13,7 @@ from apps.research.models import Participant, ResearchProject
 from apps.schools.models import DissertationDefense, ScientificSchool
 from apps.schools.period import report_period
 from apps.staff.models import Teacher
+from apps.students.models import Student, StudentAchievement
 
 from ._base import DevOnlyCommand, domain_counts, has_domain_data
 from .clear_data import clear_data
@@ -101,6 +102,27 @@ PROJECTS = [
     ('Модели теплопереноса в многослойных материалах', ResearchProject.Status.SUSPENDED),
     ('Сервис автоматической проверки технической документации', ResearchProject.Status.CANCELLED),
 ]
+# Фамилия, имя, отчество курсанта. Курс, группа, статус и руководитель задаются в DemoData.create_students.
+STUDENTS = [
+    ('Алексеев', 'Никита', 'Романович'), ('Белова', 'Дарья', 'Андреевна'), ('Васильев', 'Кирилл', 'Олегович'),
+    ('Гусева', 'Полина', 'Сергеевна'), ('Демидов', 'Егор', 'Максимович'), ('Ершова', 'Виктория', 'Игоревна'),
+    ('Жуков', 'Арсений', 'Дмитриевич'), ('Зуева', 'Алина', 'Павловна'), ('Ильин', 'Матвей', 'Александрович'),
+    ('Карпова', 'Софья', 'Евгеньевна'), ('Лаптев', 'Георгий', 'Витальевич'), ('Медведева', 'Ева', 'Романовна'),
+    ('Никитин', 'Тимур', 'Ильдарович'), ('Осипова', 'Ульяна', 'Константиновна'), ('Прохоров', 'Данила', 'Юрьевич'),
+    ('Родионова', 'Вероника', 'Михайловна'), ('Савельев', 'Иван', 'Борисович'), ('Титова', 'Злата', 'Олеговна'),
+    ('Уткин', 'Роман', 'Сергеевич'), ('Филиппова', 'Арина', 'Владимировна'), ('Хохлов', 'Ярослав', 'Петрович'),
+    ('Цветкова', 'Мирослава', 'Андреевна'), ('Шаров', 'Лев', 'Николаевич'), ('Юдина', 'Маргарита', ''),
+]
+ACHIEVEMENT_TITLES = {
+    StudentAchievement.Kind.OLYMPIAD: ['Олимпиада по информационной безопасности', 'Олимпиада по программированию'],
+    StudentAchievement.Kind.CONTEST: ['Конкурс научных работ курсантов и студентов', 'Конкурс «Молодой учёный»'],
+    StudentAchievement.Kind.GRANT: ['Грант «Студенческий стартап»', 'Грант на проведение НИР молодыми учёными'],
+    StudentAchievement.Kind.SCHOLARSHIP: ['Именная стипендия учёного совета', 'Стипендия Правительства РФ'],
+    StudentAchievement.Kind.EXHIBITION: ['Выставка научно-технического творчества молодёжи', 'Выставка «Архимед»'],
+    StudentAchievement.Kind.OTHER: ['Хакатон по анализу данных', 'Соревнования CTF по защите информации'],
+}
+ACHIEVEMENT_RESULTS = ['диплом I степени', 'диплом II степени', 'диплом III степени', 'победитель', 'призёр',
+                       'участник', 'лауреат']
 
 
 class Command(DevOnlyCommand):
@@ -176,8 +198,14 @@ class DemoData:
     def pick_teachers(self, low=1, high=3, pool=None):
         return self.rnd.sample(pool or self.active, self.rnd.randint(low, high))
 
-    def add_authors(self, model, link_field, record, teachers, external_chance=0.3):
-        rows = [{'teacher': teacher} for teacher in teachers]
+    def with_student(self, teachers):
+        """Добавляет к авторам курсанта — подопечного кого-то из них, а если таких нет — любого."""
+        own = [s for s in self.author_students if s.supervisor in teachers]
+        return [*teachers, self.rnd.choice(own or self.author_students)]
+
+    def add_authors(self, model, link_field, record, people, external_chance=0.3):
+        """people — преподаватели и курсанты в порядке авторов; иногда добавляется внешний автор."""
+        rows = [{'student' if isinstance(person, Student) else 'teacher': person} for person in people]
         if self.rnd.random() < external_chance:
             rows.insert(self.rnd.randint(0, len(rows)), {'external_name': self.rnd.choice(EXTERNAL_AUTHORS)})
         for order, row in enumerate(rows, start=1):
@@ -190,6 +218,7 @@ class DemoData:
         self.create_users()
         self.create_schools()
         self.create_projects()
+        self.create_students()
         self.create_publications()
         self.create_intellectual_properties()
         self.create_conferences()
@@ -252,6 +281,41 @@ class DemoData:
                 save(Participant(project=project, teacher=member, role=Participant.Role.MEMBER))
             self.projects.append(project)
 
+    def create_students(self):
+        self.students = []
+        for index, (last, first, middle) in enumerate(STUDENTS):
+            course = 1 + index % 5
+            status = Student.Status.STUDYING
+            if index >= len(STUDENTS) - 3:
+                course, status = 5, Student.Status.GRADUATED
+            elif index == len(STUDENTS) - 4:
+                status = Student.Status.EXPELLED
+            # Первые курсанты — подопечные демо-преподавателя ivanov; у части первокурсников руководителя нет.
+            if index < 5:
+                supervisor = self.demo_teachers[0]
+            elif course == 1 and index % 2:
+                supervisor = None
+            else:
+                supervisor = self.rnd.choice(self.active[:10])
+            self.students.append(save(Student(
+                last_name=last, first_name=first, middle_name=middle, course=course, status=status,
+                group=f'{"ИБ" if index % 2 else "ПИ"}-{course}{1 + index % 3}', supervisor=supervisor,
+            )))
+        self.author_students = [s for s in self.students if s.status != Student.Status.EXPELLED]
+
+        kinds = list(StudentAchievement.Kind) + self.rnd.choices(list(StudentAchievement.Kind), k=14)
+        levels = list(StudentAchievement.Level)
+        for index, kind in enumerate(kinds):
+            # Первые достижения — у подопечных ivanov, чтобы демо-преподавателю было что вести.
+            student = self.students[index % 5] if index < 5 else self.rnd.choice(self.author_students)
+            level = levels[index % len(levels)] if index < len(levels) * 2 else self.rnd.choice(levels)
+            save(StudentAchievement(
+                student=student, kind=kind, level=level,
+                title=self.rnd.choice(ACHIEVEMENT_TITLES[kind]), result=self.rnd.choice(ACHIEVEMENT_RESULTS),
+                date=self.date_in(self.year(recent_share=0.9)), supervisor=student.supervisor,
+                document=f'Диплом № {self.rnd.randint(100, 999)}' if self.rnd.random() < 0.5 else '',
+            ))
+
     def create_publications(self):
         kinds = list(Publication.Kind)  # первые записи — по одной каждого вида
         kinds += self.rnd.choices(
@@ -270,6 +334,8 @@ class DemoData:
             demo = self.demo_teachers[index % len(self.demo_teachers)]
             if index % 3 == 0 and demo not in teachers:
                 teachers[0] = demo
+            if index % 4 == 1:
+                teachers = self.with_student(teachers)
             self.add_authors(PublicationAuthor, 'publication', publication, teachers)
             self.link_schools(publication, index)
             if kind == Publication.Kind.THESES:
@@ -325,8 +391,10 @@ class DemoData:
                 registration_date=registration, holder=UNIVERSITY,
                 project=self.rnd.choice(self.projects) if self.rnd.random() < 0.4 else None,
             ))
-            self.add_authors(IntellectualPropertyAuthor, 'intellectual_property', item, self.pick_teachers(1, 3),
-                             external_chance=0.15)
+            authors = self.pick_teachers(1, 3)
+            if index in (1, 6):
+                authors = self.with_student(authors)
+            self.add_authors(IntellectualPropertyAuthor, 'intellectual_property', item, authors, external_chance=0.15)
             self.link_schools(item, index)
 
     def create_conferences(self):
@@ -347,9 +415,13 @@ class DemoData:
                     conference=conference, title=publication.title if publication else self.title(),
                     form=self.rnd.choices(list(Report.Form), weights=[15, 70, 15])[0], publication=publication,
                 ))
-                speakers = [a.teacher for a in publication.authors.all() if a.teacher_id] if publication else []
-                self.add_authors(ReportSpeaker, 'report', report, speakers or self.pick_teachers(1, 2),
-                                 external_chance=0.2)
+                if publication:
+                    speakers = [a.teacher or a.student for a in publication.authors.all() if not a.external_name]
+                else:
+                    speakers = self.pick_teachers(1, 2)
+                    if self.rnd.random() < 0.3:
+                        speakers = self.with_student(speakers)
+                self.add_authors(ReportSpeaker, 'report', report, speakers, external_chance=0.2)
 
     def create_defenses(self):
         # Защитившиеся сотрудники — те, чья степень в карточке соответствует виду защиты.

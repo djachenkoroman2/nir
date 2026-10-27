@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Изменение достижения{% else %}Новое достижение{% endif %} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'students:student_list' %}">Курсанты</a></li>
+        <li class="breadcrumb-item"><a href="{{ student.get_absolute_url }}">{{ student.short_name }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение достижения{% else %}Новое достижение{% endif %}</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-3">{% if object %}Изменение достижения{% else %}Новое достижение{% endif %}: {{ student.full_name }}</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+            <div class="row">
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.kind %}</div>
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.level %}</div>
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.date %}</div>
+            </div>
+            {% include 'includes/form_field.html' with field=form.title %}
+            <div class="row">
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.result %}</div>
+                <div class="col-md-6">{% include 'includes/form_field.html' with field=form.supervisor %}</div>
+            </div>
+            {% include 'includes/form_field.html' with field=form.document %}
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <a href="{{ student.get_absolute_url }}" class="btn btn-outline-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

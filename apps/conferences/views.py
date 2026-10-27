@@ -7,6 +7,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 
 from apps.core.search import search
 from apps.core.views import AuthorFormSetMixin, RecordPermissionRequiredMixin
+from apps.staff.models import SPEAKERS_PREFETCH
 
 from .forms import ConferenceForm, ReportForm, ReportSpeakerFormSet
 from .models import Conference, Report
@@ -49,7 +50,7 @@ class ConferenceDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['reports'] = self.object.reports.select_related('publication').prefetch_related('speakers__teacher')
+        context['reports'] = self.object.reports.select_related('publication').prefetch_related(*SPEAKERS_PREFETCH)
         return context
 
 

@@ -13,6 +13,7 @@ from apps.schools.indicators import indicator_totals
 from apps.schools.models import ScientificSchool
 from apps.schools.period import report_period
 from apps.staff.models import Teacher
+from apps.students.models import Student, StudentAchievement
 
 
 # Быстрый хешер: seed_demo создаёт несколько пользователей, стандартный PBKDF2 сильно замедляет тесты.
@@ -53,6 +54,20 @@ class SeedDemoTests(TestCase):
         self.assertEqual(set(Publication.objects.values_list('kind', flat=True)), set(Publication.Kind.values))
         self.assertTrue(Teacher.objects.filter(is_active=False).exists())
         self.assertTrue(ScientificSchool.objects.filter(is_active=False).exists())
+        self.assertEqual(set(Student.objects.values_list('status', flat=True)), set(Student.Status.values))
+        self.assertEqual(set(StudentAchievement.objects.values_list('kind', flat=True)),
+                         set(StudentAchievement.Kind.values))
+        self.assertEqual(set(StudentAchievement.objects.values_list('level', flat=True)),
+                         set(StudentAchievement.Level.values))
+
+    def test_students_are_coauthors_and_ivanov_supervises(self):
+        run('seed_demo')
+        for model in DOMAIN_MODELS:
+            if hasattr(model, 'student'):
+                with self.subTest(model=model.__name__):
+                    self.assertTrue(model.objects.filter(student__isnull=False).exists())
+        ivanov = User.objects.get(username='ivanov').teacher
+        self.assertTrue(StudentAchievement.objects.filter(student__supervisor=ivanov).exists())
 
     def test_school_indicators_are_not_empty(self):
         run('seed_demo')

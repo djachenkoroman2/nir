@@ -4,7 +4,17 @@ from django.db import models
 from django.urls import reverse
 
 
-class Teacher(models.Model):
+class ProtectedRelationsMixin:
+    def has_protected_relations(self):
+        """Есть ли записи, которые ссылаются на объект с on_delete=PROTECT (тогда удалять нельзя)."""
+        return any(
+            relation.related_model._default_manager.filter(**{relation.field.name: self}).exists()
+            for relation in self._meta.related_objects
+            if relation.on_delete is models.PROTECT
+        )
+
+
+class Teacher(ProtectedRelationsMixin, models.Model):
     """Преподаватель кафедры (профессорско-преподавательский состав)."""
 
     class Position(models.TextChoices):
@@ -60,14 +70,6 @@ class Teacher(models.Model):
     def get_absolute_url(self):
         return reverse('staff:teacher_detail', args=[self.pk])
 
-    def has_protected_relations(self):
-        """Участвует ли преподаватель в НИОКР, публикациях, РИД или докладах (тогда удалять нельзя)."""
-        return any(
-            relation.related_model._default_manager.filter(**{relation.field.name: self}).exists()
-            for relation in self._meta.related_objects
-            if relation.on_delete is models.PROTECT
-        )
-
     @property
     def full_name(self):
         return ' '.join(part for part in (self.last_name, self.first_name, self.middle_name) if part)
@@ -78,14 +80,22 @@ class Teacher(models.Model):
         return f'{self.last_name} {initials}'.strip()
 
 
+# Что подгружать вместе с записями, у которых выводятся авторы (докладчики), — без запросов в цикле.
+AUTHORS_PREFETCH = ('authors__teacher', 'authors__student')
+SPEAKERS_PREFETCH = ('speakers__teacher', 'speakers__student')
+
+
 class AuthorBase(models.Model):
-    """Автор (соавтор, докладчик): преподаватель кафедры или внешний человек, указанный текстом.
+    """Автор (соавтор, докладчик): преподаватель кафедры, курсант или внешний человек, указанный текстом.
 
     Используется в публикациях, РИД и докладах; порядок авторов хранится в поле order.
     """
 
     teacher = models.ForeignKey(
         Teacher, verbose_name='преподаватель кафедры', on_delete=models.PROTECT, null=True, blank=True
+    )
+    student = models.ForeignKey(
+        'students.Student', verbose_name='курсант', on_delete=models.PROTECT, null=True, blank=True
     )
     external_name = models.CharField(
         'внешний автор', max_length=200, blank=True, help_text='ФИО, если автор не работает на кафедре.'
@@ -97,8 +107,14 @@ class AuthorBase(models.Model):
         ordering = ['order', 'pk']
 
     def __str__(self):
-        return self.teacher.short_name if self.teacher_id else self.external_name
+        if self.teacher_id:
+            return self.teacher.short_name
+        if self.student_id:
+            return self.student.short_name
+        return self.external_name
 
     def clean(self):
-        if bool(self.teacher_id) == bool(self.external_name.strip()):
-            raise ValidationError('Выберите преподавателя кафедры или укажите ФИО внешнего автора (что-то одно).')
+        if [bool(self.teacher_id), bool(self.student_id), bool(self.external_name.strip())].count(True) != 1:
+            raise ValidationError(
+                'Выберите преподавателя кафедры или курсанта либо укажите ФИО внешнего автора (что-то одно).'
+            )

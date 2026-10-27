@@ -6,6 +6,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from apps.core.views import RecordPermissionRequiredMixin
+from apps.staff.models import AUTHORS_PREFETCH
 
 from .forms import DissertationDefenseForm, SchoolForm
 from .indicators import INDICATORS_BY_KEY, annotate_indicators, indicator_totals
@@ -64,10 +65,10 @@ class SchoolDetailView(LoginRequiredMixin, PeriodMixin, DetailView):
 
         context.update({
             'defenses': records('defenses_total').select_related('teacher', 'supervisor'),
-            'monographs': records('monographs').prefetch_related('authors__teacher'),
-            'monograph_chapters': records('monograph_chapters').prefetch_related('authors__teacher'),
-            'vak_publications': records('vak_publications').prefetch_related('authors__teacher'),
-            'intellectual_properties': records('ip_total').prefetch_related('authors__teacher'),
+            'monographs': records('monographs').prefetch_related(*AUTHORS_PREFETCH),
+            'monograph_chapters': records('monograph_chapters').prefetch_related(*AUTHORS_PREFETCH),
+            'vak_publications': records('vak_publications').prefetch_related(*AUTHORS_PREFETCH),
+            'intellectual_properties': records('ip_total').prefetch_related(*AUTHORS_PREFETCH),
             'earlier_defenses': school.defenses.exclude(pk__in=records('defenses_total')).select_related('supervisor'),
         })
         return context

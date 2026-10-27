@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import ProtectedError
+from django.db.models import Count, ProtectedError
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
@@ -10,9 +10,10 @@ from apps.core.search import search
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
 from apps.core.views import RecordPermissionRequiredMixin
+from apps.students.models import Student, StudentAchievement
 
 from .forms import TeacherForm
-from .models import Teacher
+from .models import AUTHORS_PREFETCH, Teacher
 
 
 class TeacherListView(LoginRequiredMixin, ListView):
@@ -42,14 +43,22 @@ class TeacherDetailView(LoginRequiredMixin, DetailView):
         teacher = self.object
         context['memberships'] = teacher.memberships.select_related('project').order_by('-project__start_date')
         context['publications'] = (
-            Publication.objects.filter(authors__teacher=teacher).prefetch_related('authors__teacher')
+            Publication.objects.filter(authors__teacher=teacher).prefetch_related(*AUTHORS_PREFETCH)
         )
         context['intellectual_properties'] = (
-            IntellectualProperty.objects.filter(authors__teacher=teacher).prefetch_related('authors__teacher')
+            IntellectualProperty.objects.filter(authors__teacher=teacher).prefetch_related(*AUTHORS_PREFETCH)
         )
         context['reports'] = (
             Report.objects.filter(speakers__teacher=teacher)
             .select_related('conference').order_by('-conference__start_date')
+        )
+        # annotate с Count отменяет сортировку из Meta, поэтому задаём её явно.
+        context['supervised_students'] = (
+            teacher.supervised_students.annotate(achievement_count=Count('achievements'))
+            .order_by(*Student._meta.ordering)
+        )
+        context['supervised_achievements'] = (
+            StudentAchievement.objects.filter(supervisor=teacher).select_related('student')
         )
         return context
 
@@ -90,7 +99,8 @@ class TeacherDeleteView(RecordPermissionRequiredMixin, DeleteView):
         except ProtectedError:
             messages.error(
                 self.request,
-                'Нельзя удалить преподавателя, который участвует в НИОКР, публикациях, РИД или докладах. '
+                'Нельзя удалить преподавателя, который участвует в НИОКР, публикациях, РИД или докладах '
+                'либо руководит научной работой курсантов. '
                 'Снимите отметку «работает на кафедре» вместо удаления.',
             )
             return redirect(self.object)

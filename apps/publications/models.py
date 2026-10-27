@@ -123,4 +123,8 @@ class PublicationAuthor(AuthorBase):
                 fields=['publication', 'teacher'], condition=models.Q(teacher__isnull=False),
                 name='unique_publication_teacher',
             ),
+            models.UniqueConstraint(
+                fields=['publication', 'student'], condition=models.Q(student__isnull=False),
+                name='unique_publication_student',
+            ),
         ]

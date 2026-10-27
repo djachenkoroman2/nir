@@ -1,0 +1,4 @@
+{% extends 'includes/confirm_delete.html' %}
+
+{% block heading %}Удаление достижения{% endblock %}
+{% block question %}Удалить достижение <strong>«{{ object.title }}»</strong> курсанта {{ object.student.full_name }}?{% endblock %}

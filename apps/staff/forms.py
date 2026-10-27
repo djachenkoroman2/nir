@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from apps.core.forms import BootstrapFormMixin
+from apps.students.models import Student
 
 from .models import Teacher
 
@@ -23,28 +24,40 @@ def teacher_choices(current_teacher_id=None):
     return teachers.distinct()
 
 
+def student_choices(current_student_id=None):
+    """Курсанты, кроме отчисленных; уже выбранный (даже если отчислен) остаётся в списке."""
+    students = Student.objects.exclude(status=Student.Status.EXPELLED)
+    if current_student_id:
+        students = students | Student.objects.filter(pk=current_student_id)
+    return students.distinct()
+
+
 class AuthorForm(BootstrapFormMixin, forms.ModelForm):
-    """Строка формсета авторов: преподаватель кафедры или внешний автор."""
+    """Строка формсета авторов: преподаватель кафедры, курсант или внешний автор."""
 
     class Meta:
-        fields = ['teacher', 'external_name']
+        fields = ['teacher', 'student', 'external_name']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['teacher'].queryset = teacher_choices(self.instance.teacher_id)
-        self.fields['teacher'].empty_label = '— внешний автор —'
-        self.fields['external_name'].widget.attrs['placeholder'] = 'ФИО внешнего автора'
+        self.fields['teacher'].empty_label = '— преподаватель —'
+        self.fields['student'].queryset = student_choices(self.instance.student_id)
+        self.fields['student'].empty_label = '— курсант —'
+        self.fields['external_name'].widget.attrs['placeholder'] = 'или ФИО внешнего автора'
 
     def has_changed(self):
-        # Новая строка заполнена, если выбран преподаватель или вписано ФИО. Сравнение с initial
-        # не подходит: строку, заранее заполненную текущим преподавателем, Django счёл бы пустой.
+        # Новая строка заполнена, если выбран преподаватель или курсант или вписано ФИО. Сравнение
+        # с initial не подходит: строку, заранее заполненную текущим преподавателем, Django счёл бы пустой.
         if self.instance.pk or not self.is_bound:
             return super().has_changed()
-        return bool(self['teacher'].value() or (self['external_name'].value() or '').strip())
+        return bool(
+            self['teacher'].value() or self['student'].value() or (self['external_name'].value() or '').strip()
+        )
 
 
 class BaseAuthorFormSet(forms.BaseInlineFormSet):
-    """Проверяет, что указан хотя бы один автор и преподаватели не повторяются; сохраняет порядок строк."""
+    """Проверяет, что указан хотя бы один автор, а преподаватели и курсанты не повторяются; сохраняет порядок строк."""
 
     empty_error = 'Укажите хотя бы одного автора.'
     missing_teacher_error = 'Укажите среди авторов себя: иначе вы не сможете изменять эту запись.'
@@ -74,6 +87,9 @@ class BaseAuthorFormSet(forms.BaseInlineFormSet):
         teachers = [form.cleaned_data['teacher'] for form in forms_ if form.cleaned_data.get('teacher')]
         if len(teachers) != len(set(teachers)):
             raise ValidationError('Один и тот же преподаватель указан несколько раз.')
+        students = [form.cleaned_data['student'] for form in forms_ if form.cleaned_data.get('student')]
+        if len(students) != len(set(students)):
+            raise ValidationError('Один и тот же курсант указан несколько раз.')
         if self.required_teacher is not None and self.required_teacher not in teachers:
             raise ValidationError(self.missing_teacher_error)
 

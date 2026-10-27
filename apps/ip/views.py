@@ -5,6 +5,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 
 from apps.core.search import search
 from apps.core.views import AuthorFormSetMixin, RecordPermissionRequiredMixin
+from apps.staff.models import AUTHORS_PREFETCH
 
 from .forms import IntellectualPropertyAuthorFormSet, IntellectualPropertyForm
 from .models import IntellectualProperty
@@ -15,7 +16,7 @@ class IntellectualPropertyListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = super().get_queryset().prefetch_related('authors__teacher')
+        queryset = super().get_queryset().prefetch_related(*AUTHORS_PREFETCH)
         queryset = search(queryset, ['title', 'number'], self.request.GET.get('q', ''))
         kind = self.request.GET.get('kind', '')
         if kind in IntellectualProperty.Kind.values:
@@ -43,7 +44,7 @@ class IntellectualPropertyDetailView(LoginRequiredMixin, DetailView):
     model = IntellectualProperty
 
     def get_queryset(self):
-        return super().get_queryset().select_related('project').prefetch_related('authors__teacher')
+        return super().get_queryset().select_related('project').prefetch_related(*AUTHORS_PREFETCH)
 
 
 class IntellectualPropertyCreateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, CreateView):

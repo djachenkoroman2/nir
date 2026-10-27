@@ -50,7 +50,7 @@
                 </div>
                 <div class="small">
                     {% for speaker in report.speakers.all %}
-                        {% if speaker.teacher %}<a href="{{ speaker.teacher.get_absolute_url }}">{{ speaker }}</a>{% else %}{{ speaker }}{% endif %}{% if not forloop.last %}, {% endif %}
+                        {% include 'includes/author_name.html' with author=speaker %}{% if not forloop.last %}, {% endif %}
                     {% endfor %}
                 </div>
                 {% if report.publication %}

@@ -14,6 +14,7 @@ from apps.publications.models import Publication
 from apps.research.models import ResearchProject
 from apps.schools.models import ScientificSchool
 from apps.staff.models import Teacher
+from apps.students.models import Student, StudentAchievement
 
 
 @login_required
@@ -45,6 +46,11 @@ def home(request):
             'title': 'Научные школы', 'url': reverse('schools:school_list'),
             'text': f'Действующих: {ScientificSchool.objects.filter(is_active=True).count()}',
         },
+        {
+            'title': 'Курсанты', 'url': reverse('students:student_list'),
+            'text': f'Обучаются: {Student.objects.filter(status=Student.Status.STUDYING).count()}, '
+                    f'достижений за {year} год: {StudentAchievement.objects.filter(date__year=year).count()}',
+        },
     ]
     return render(request, 'core/home.html', {'sections': sections})
 
@@ -60,8 +66,12 @@ class RecordPermissionRequiredMixin(PermissionRequiredMixin):
             self._object = super().get_object(queryset)
         return self._object
 
+    def get_permission_object(self):
+        """Запись, права на которую проверяются; при добавлении — None (или родительская запись)."""
+        return self.get_object() if 'pk' in self.kwargs else None
+
     def has_permission(self):
-        obj = self.get_object() if 'pk' in self.kwargs else None
+        obj = self.get_permission_object()
         return all(can_manage(self.request.user, perm, obj) for perm in self.get_permission_required())
 
 

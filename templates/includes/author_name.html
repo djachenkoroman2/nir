@@ -1,0 +1,1 @@
+{# Автор (докладчик) со ссылкой на карточку преподавателя или курсанта. Параметр: author. #}{% if author.teacher %}<a href="{{ author.teacher.get_absolute_url }}">{{ author }}</a>{% elif author.student %}<a href="{{ author.student.get_absolute_url }}">{{ author }}</a> <span class="badge text-bg-light border">курсант</span>{% else %}{{ author }}{% endif %}

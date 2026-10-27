@@ -15,5 +15,6 @@ urlpatterns = [
     path('ip/', include('apps.ip.urls')),
     path('conferences/', include('apps.conferences.urls')),
     path('schools/', include('apps.schools.urls')),
+    path('students/', include('apps.students.urls')),
     path('', include('apps.core.urls')),
 ]

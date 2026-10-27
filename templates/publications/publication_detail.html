@@ -29,7 +29,7 @@
             <dt class="col-sm-4">Авторы</dt>
             <dd class="col-sm-8">
                 {% for author in publication.authors.all %}
-                    {% if author.teacher %}<a href="{{ author.teacher.get_absolute_url }}">{{ author }}</a>{% else %}{{ author }}{% endif %}{% if not forloop.last %}, {% endif %}
+                    {% include 'includes/author_name.html' %}{% if not forloop.last %}, {% endif %}
                 {% empty %}—{% endfor %}
             </dd>
             <dt class="col-sm-4">Выходные данные</dt><dd class="col-sm-8">{{ publication.imprint }}</dd>

@@ -22,7 +22,7 @@ class ConferenceAdmin(admin.ModelAdmin):
 class ReportSpeakerInline(admin.TabularInline):
     model = ReportSpeaker
     extra = 1
-    autocomplete_fields = ['teacher']
+    autocomplete_fields = ['teacher', 'student']
 
 
 @admin.register(Report)

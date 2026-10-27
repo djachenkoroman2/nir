@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load permissions %}
+
+{% block title %}Курсанты — {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">НИР курсантов</h1>
+    {% can user 'students.add_student' as can_add %}{% if can_add %}
+        <a href="{% url 'students:student_create' %}" class="btn btn-primary">Добавить курсанта</a>
+    {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-12 col-lg-4">
+        <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="Поиск по ФИО и группе" aria-label="Поиск по ФИО и группе">
+    </div>
+    <div class="col-6 col-md-3 col-lg-1">
+        <select name="course" class="form-select" aria-label="Курс">
+            <option value="">Курс</option>
+            {% for value in course_choices %}
+                <option value="{{ value }}" {% if course == value|stringformat:'d' %}selected{% endif %}>{{ value }} курс</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-6 col-md-3 col-lg-2">
+        <select name="group" class="form-select" aria-label="Группа">
+            <option value="">Все группы</option>
+            {% for value in group_choices %}
+                <option value="{{ value }}" {% if group == value %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-12 col-md-6 col-lg-2">
+        <select name="supervisor" class="form-select" aria-label="Научный руководитель">
+            <option value="">Все руководители</option>
+            {% for teacher in supervisor_choices %}
+                <option value="{{ teacher.pk }}" {% if supervisor == teacher.pk|stringformat:'d' %}selected{% endif %}>{{ teacher }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-8 col-md-4 col-lg-2">
+        <select name="status" class="form-select" aria-label="Статус">
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label|capfirst }}</option>
+            {% endfor %}
+            <option value="{{ all_statuses }}" {% if status == all_statuses %}selected{% endif %}>Все статусы</option>
+        </select>
+    </div>
+    <div class="col-4 col-md-2 col-lg-1 d-grid">
+        <button type="submit" class="btn btn-outline-primary">Найти</button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>ФИО</th>
+                <th>Группа</th>
+                <th>Курс</th>
+                <th class="d-none d-md-table-cell">Научный руководитель</th>
+                <th class="d-none d-md-table-cell">Статус</th>
+                <th class="text-end">Публикаций</th>
+                <th class="text-end">Достижений</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for student in student_list %}
+                <tr>
+                    <td><a href="{{ student.get_absolute_url }}">{{ student.full_name }}</a></td>
+                    <td>{{ student.group }}</td>
+                    <td>{{ student.course }}</td>
+                    <td class="d-none d-md-table-cell">
+                        {% if student.supervisor %}<a href="{{ student.supervisor.get_absolute_url }}">{{ student.supervisor }}</a>{% else %}—{% endif %}
+                    </td>
+                    <td class="d-none d-md-table-cell"><span class="badge {{ student.status_badge }}">{{ student.get_status_display }}</span></td>
+                    <td class="text-end">{{ student.publication_count }}</td>
+                    <td class="text-end">{{ student.achievement_count }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">Курсанты не найдены.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'includes/pagination.html' %}
+<p class="text-muted small mt-3">Публикации курсантов ведутся в разделе «Публикации»: курсант указывается там одним из авторов.</p>
+{% endblock %}

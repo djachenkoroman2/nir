@@ -97,4 +97,8 @@ class ReportSpeaker(AuthorBase):
                 fields=['report', 'teacher'], condition=models.Q(teacher__isnull=False),
                 name='unique_report_teacher',
             ),
+            models.UniqueConstraint(
+                fields=['report', 'student'], condition=models.Q(student__isnull=False),
+                name='unique_report_student',
+            ),
         ]

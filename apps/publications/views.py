@@ -5,6 +5,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 
 from apps.core.search import search
 from apps.core.views import AuthorFormSetMixin, RecordPermissionRequiredMixin
+from apps.staff.models import AUTHORS_PREFETCH
 
 from .forms import PublicationAuthorFormSet, PublicationForm
 from .models import Publication
@@ -23,7 +24,7 @@ class PublicationListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = super().get_queryset().prefetch_related('authors__teacher')
+        queryset = super().get_queryset().prefetch_related(*AUTHORS_PREFETCH)
         queryset = search(queryset, ['title', 'source'], self.request.GET.get('q', ''))
         kind = self.request.GET.get('kind', '')
         if kind in Publication.Kind.values:
@@ -54,7 +55,7 @@ class PublicationDetailView(LoginRequiredMixin, DetailView):
     model = Publication
 
     def get_queryset(self):
-        return super().get_queryset().select_related('project').prefetch_related('authors__teacher')
+        return super().get_queryset().select_related('project').prefetch_related(*AUTHORS_PREFETCH)
 
 
 class PublicationCreateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, CreateView):

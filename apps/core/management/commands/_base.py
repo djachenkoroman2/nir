@@ -8,15 +8,17 @@ from apps.publications.models import Publication, PublicationAuthor
 from apps.research.models import Participant, ResearchProject
 from apps.schools.models import DissertationDefense, ScientificSchool
 from apps.staff.models import Teacher
+from apps.students.models import Student, StudentAchievement
 
 # Предметные модели в порядке удаления: сначала зависимые записи, потом те, на которые они
-# ссылаются с on_delete=PROTECT (авторы → преподаватели, защиты → школы и т.д.).
+# ссылаются с on_delete=PROTECT (авторы → преподаватели и курсанты, защиты → школы и т.д.).
 DOMAIN_MODELS = [
     ReportSpeaker, Report, Conference,
     PublicationAuthor, Publication,
     IntellectualPropertyAuthor, IntellectualProperty,
     DissertationDefense, ScientificSchool,
     Participant, ResearchProject,
+    StudentAchievement, Student,
     Teacher,
 ]
 

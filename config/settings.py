@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'apps.ip',
     'apps.conferences',
     'apps.schools',
+    'apps.students',
 ]
 
 MIDDLEWARE = [

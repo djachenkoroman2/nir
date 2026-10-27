@@ -1,53 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ teacher.short_name }} — {{ block.super }}
-<h2 class="h5 mt-4">Публикации <span class="text-muted fw-normal">({{ publications|length }})</span></h2>
-<div class="card shadow-sm">
-    <ul class="list-group list-group-flush">
-        {% for publication in publications %}
-            <li class="list-group-item">
-                <a href="{{ publication.get_absolute_url }}">{{ publication.title }}</a>
-                <div class="small text-muted">{{ publication.authors_display }}. {{ publication.imprint }}</div>
-                {% if publication.indexing %}<div class="mt-1">{% include 'includes/indexing_badges.html' %}</div>{% endif %}
-            </li>
-        {% empty %}
-            <li class="list-group-item text-muted">Публикаций нет.</li>
-        {% endfor %}
-    </ul>
-</div>
-
-<h2 class="h5 mt-4">Результаты интеллектуальной деятельности <span class="text-muted fw-normal">({{ intellectual_properties|length }})</span></h2>
-<div class="card shadow-sm">
-    <ul class="list-group list-group-flush">
-        {% for item in intellectual_properties %}
-            <li class="list-group-item">
-                <a href="{{ item.get_absolute_url }}">{{ item.title }}</a>
-                <div class="small text-muted">{{ item.get_kind_display|capfirst }} № {{ item.number }} от {{ item.registration_date|date:'d.m.Y' }}</div>
-            </li>
-        {% empty %}
-            <li class="list-group-item text-muted">РИД нет.</li>
-        {% endfor %}
-    </ul>
-</div>
-
-<h2 class="h5 mt-4">Доклады на конференциях <span class="text-muted fw-normal">({{ reports|length }})</span></h2>
-<div class="card shadow-sm">
-    <ul class="list-group list-group-flush">
-        {% for report in reports %}
-            <li class="list-group-item">
-                {{ report.title }}
-                <div class="small text-muted">
-                    {{ report.get_form_display|capfirst }} доклад,
-                    <a href="{{ report.conference.get_absolute_url }}">{{ report.conference }}</a>,
-                    {{ report.conference.start_date|date:'Y' }}
-                </div>
-            </li>
-        {% empty %}
-            <li class="list-group-item text-muted">Докладов нет.</li>
-        {% endfor %}
-    </ul>
-</div>
-{% endblock %}
+{% block title %}{{ teacher.short_name }} — {{ block.super }}{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb">
@@ -161,4 +114,45 @@
         {% endfor %}
     </ul>
 </div>
+
+<h2 class="h5 mt-4">Научное руководство курсантами <span class="text-muted fw-normal">({{ supervised_students|length }})</span></h2>
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+            <tr><th>Курсант</th><th>Группа</th><th>Курс</th><th>Статус</th><th class="text-end">Достижений</th></tr>
+            </thead>
+            <tbody>
+            {% for student in supervised_students %}
+                <tr>
+                    <td><a href="{{ student.get_absolute_url }}">{{ student.full_name }}</a></td>
+                    <td>{{ student.group }}</td>
+                    <td>{{ student.course }}</td>
+                    <td><span class="badge {{ student.status_badge }}">{{ student.get_status_display }}</span></td>
+                    <td class="text-end">{{ student.achievement_count }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Не руководит научной работой курсантов.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% if supervised_achievements %}
+    <h3 class="h6 mt-3">Достижения курсантов под руководством преподавателя</h3>
+    <div class="card shadow-sm">
+        <ul class="list-group list-group-flush">
+            {% for achievement in supervised_achievements %}
+                <li class="list-group-item">
+                    {{ achievement.title }} — {{ achievement.result }}
+                    <div class="small text-muted">
+                        <a href="{{ achievement.student.get_absolute_url }}">{{ achievement.student }}</a>,
+                        {{ achievement.get_kind_display }}, {{ achievement.get_level_display }} уровень,
+                        {{ achievement.date|date:'d.m.Y' }}
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
 {% endblock %}

@@ -73,4 +73,8 @@ class IntellectualPropertyAuthor(AuthorBase):
                 fields=['intellectual_property', 'teacher'], condition=models.Q(teacher__isnull=False),
                 name='unique_ip_teacher',
             ),
+            models.UniqueConstraint(
+                fields=['intellectual_property', 'student'], condition=models.Q(student__isnull=False),
+                name='unique_ip_student',
+            ),
         ]

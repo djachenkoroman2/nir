@@ -6,7 +6,7 @@ from .models import IntellectualProperty, IntellectualPropertyAuthor
 class IntellectualPropertyAuthorInline(admin.TabularInline):
     model = IntellectualPropertyAuthor
     extra = 1
-    autocomplete_fields = ['teacher']
+    autocomplete_fields = ['teacher', 'student']
 
 
 @admin.register(IntellectualProperty)
