@@ -1,6 +1,8 @@
 """Общее для команд seed_demo и clear_data (модуль с «_» Django командой не считает)."""
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 
 from apps.adjuncts.models import Adjunct, AdjunctAchievement, PlanStage, Task, TaskComment
 from apps.conferences.models import Conference, Report, ReportSpeaker
@@ -49,6 +51,10 @@ class DevOnlyCommand(BaseCommand):
                 'DJANGO_DEBUG=False: похоже, это рабочий сервер. Команда предназначена только для разработки '
                 'и меняет данные в базе. Если вы уверены, повторите с параметром --force.'
             )
+        # После обновления приложения без migrate в базе нет новых таблиц и полей — объясняем, а не падаем.
+        executor = MigrationExecutor(connection)
+        if executor.migration_plan(executor.loader.graph.leaf_nodes()):
+            raise CommandError('В базе применены не все миграции. Сначала выполните: uv run python manage.py migrate')
 
     def print_counts(self, title, counts):
         self.stdout.write(title)

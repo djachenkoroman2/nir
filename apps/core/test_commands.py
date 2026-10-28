@@ -195,6 +195,17 @@ class ClearDataTests(TestCase):
         self.assertFalse(Publication.objects.exists())
 
 
+@override_settings(DEBUG=True, PASSWORD_HASHERS=FAST_HASHER)
+class MigrationGuardTests(TestCase):
+    def test_commands_refuse_with_unapplied_migrations(self):
+        User.objects.create_superuser('admin', password='123')
+        with mock.patch('django.db.migrations.executor.MigrationExecutor.migration_plan', return_value=['pending']):
+            for command, options in (('seed_demo', {}), ('clear_data', {'noinput': True})):
+                with self.subTest(command=command), self.assertRaisesMessage(CommandError, 'manage.py migrate'):
+                    call_command(command, stdout=StringIO(), **options)
+        self.assertFalse(Teacher.objects.exists())
+
+
 @override_settings(DEBUG=False, PASSWORD_HASHERS=FAST_HASHER)
 class ProductionGuardTests(TestCase):
     def test_commands_refuse_without_force(self):
