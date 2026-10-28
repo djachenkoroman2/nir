@@ -18,6 +18,7 @@
     </h1>
     {% can user 'adjuncts.change_adjunct' adjunct as can_change %}{% can user 'adjuncts.delete_adjunct' adjunct as can_delete %}
     <div class="d-flex flex-wrap gap-2">
+        {% if form16_url %}<a href="{{ form16_url }}" class="btn btn-outline-secondary">Форма 16</a>{% endif %}
         {% if is_own_card %}
             <a href="{% url 'publications:publication_create' %}" class="btn btn-outline-primary">Добавить публикацию</a>
             <a href="{% url 'ip:ip_create' %}" class="btn btn-outline-primary">Добавить РИД</a>

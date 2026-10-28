@@ -11,6 +11,7 @@ from apps.core.management.commands._base import DOMAIN_MODELS
 from apps.core.permissions import get_person
 from apps.core.management.commands.seed_demo import DEMO_PASSWORD
 from apps.publications.models import Publication
+from apps.reports.form16 import build_form16
 from apps.schools.indicators import indicator_totals
 from apps.schools.models import ScientificSchool
 from apps.schools.period import report_period
@@ -93,6 +94,15 @@ class SeedDemoTests(TestCase):
         self.assertTrue(ivanov.led_schools.exists())
         self.assertTrue(ivanov.memberships.exists())
         self.assertTrue(ivanov.supervised_students.exists() and ivanov.supervised_adjuncts.exists())
+
+    def test_form16_is_filled_for_demo_users(self):
+        run('seed_demo')
+        self.assertTrue(Publication.objects.filter(work_form=Publication.WorkForm.ELECTRONIC).exists())
+        self.assertTrue(Publication.objects.filter(print_sheets__isnull=False).exists())
+        for login in ('ivanov', 'adjunct1', 'student1'):
+            with self.subTest(login=login):
+                report = build_form16(get_person(User.objects.get(username=login)))
+                self.assertTrue(all(section.rows for section in report.sections))
 
     def test_student_accounts_with_portfolio_and_tasks(self):
         run('seed_demo')

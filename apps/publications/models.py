@@ -23,6 +23,11 @@ class Publication(models.Model):
         K2 = 'K2', 'К2'
         K3 = 'K3', 'К3'
 
+    class WorkForm(models.TextChoices):
+        # Столбец «Форма работы» формы № 16.
+        PRINTED = 'printed', 'печатная'
+        ELECTRONIC = 'electronic', 'электронная'
+
     class Quartile(models.TextChoices):
         NONE = '', 'нет'
         Q1 = 'Q1', 'Q1'
@@ -42,6 +47,11 @@ class Publication(models.Model):
     volume = models.CharField('том', max_length=30, blank=True)
     issue = models.CharField('номер (выпуск)', max_length=30, blank=True)
     pages = models.CharField('страницы', max_length=30, blank=True, help_text='Например: 15–28 или 240 с.')
+    print_sheets = models.DecimalField(
+        'объём, п. л.', max_digits=6, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(0)], help_text='Объём в печатных листах для формы № 16, если известен.',
+    )
+    work_form = models.CharField('форма работы', max_length=20, choices=WorkForm.choices, default=WorkForm.PRINTED)
     doi = models.CharField('DOI', max_length=100, blank=True)
     url = models.URLField('ссылка', max_length=500, blank=True)
 

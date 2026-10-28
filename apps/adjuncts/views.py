@@ -13,6 +13,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from apps.core.permissions import can_manage, get_person, is_editor, is_owned_by
 from apps.core.search import search
 from apps.core.views import RecordPermissionRequiredMixin
+from apps.reports.access import form16_url_for
 from apps.staff.models import Teacher
 from apps.students.models import Student
 from apps.students.works import works_context
@@ -107,6 +108,7 @@ class AdjunctDetailView(LoginRequiredMixin, DetailView):
             'plan_done': done,
             'plan_percent': round(done * 100 / len(stages)) if stages else 0,
             'is_own_card': person is not None and adjunct.is_authored_by(person),
+            'form16_url': form16_url_for(user, adjunct),
             'defenses': adjunct.defenses.select_related('school'),
         })
         context.update(tasks_context(user, adjunct))

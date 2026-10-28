@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 import random
 
 from django.contrib.auth.models import Group
@@ -239,7 +240,8 @@ class DemoData:
     @staticmethod
     def student_logins():
         return [
-            (login, f'{last} {first[0]}. {middle[0]}.') for login, (last, first, middle) in zip(STUDENT_LOGINS, STUDENTS)
+            (login, f'{last} {first[0]}. {middle[0]}.')
+            for login, (last, first, middle) in zip(STUDENT_LOGINS, STUDENTS)
         ]
 
     # --- вспомогательное ---
@@ -304,6 +306,7 @@ class DemoData:
         self.create_defenses()
         self.create_student_tasks()
         self.fill_demo_cabinets()
+        self.fill_form16()
 
     def create_teachers(self):
         self.teachers = []
@@ -697,3 +700,32 @@ class DemoData:
             if not ReportSpeaker.objects.filter(**lookup).exists():
                 report = self.rnd.choice(reports)
                 save(ReportSpeaker(report=report, order=report.speakers.count() + 1, **lookup))
+
+    def fill_form16(self):
+        """Поля формы № 16: часть публикаций — электронные, у книг — объём в печатных листах.
+
+        У ivanov, adjunct1 и student1 в форме 16 заполнены все три раздела: научные труды, учебные издания, РИД.
+        """
+        books = (Publication.Kind.MONOGRAPH, Publication.Kind.TEXTBOOK, Publication.Kind.STUDY_GUIDE)
+        for publication in Publication.objects.order_by('pk'):
+            if publication.kind in books:
+                publication.print_sheets = Decimal(self.rnd.randint(40, 180)) / 10
+            if publication.kind in (Publication.Kind.ARTICLE, Publication.Kind.THESES) and self.rnd.random() < 0.25:
+                publication.work_form = Publication.WorkForm.ELECTRONIC
+            save(publication)
+        study = list(Publication.objects.filter(kind__in=[Publication.Kind.TEXTBOOK, Publication.Kind.STUDY_GUIDE])
+                     .order_by('pk'))
+        ips = list(IntellectualProperty.objects.order_by('pk'))
+        people = [
+            self.demo_teachers[0],
+            next(adjunct for adjunct in self.adjuncts if adjunct.user and adjunct.user.username == 'adjunct1'),
+            self.students[0],
+        ]
+        for index, person in enumerate(people):
+            lookup = author_lookup(person)
+            if not PublicationAuthor.objects.filter(publication__in=study, **lookup).exists():
+                publication = study[index % len(study)]
+                save(PublicationAuthor(publication=publication, order=publication.authors.count() + 1, **lookup))
+            if not IntellectualPropertyAuthor.objects.filter(**lookup).exists():
+                ip = ips[index % len(ips)]
+                save(IntellectualPropertyAuthor(intellectual_property=ip, order=ip.authors.count() + 1, **lookup))

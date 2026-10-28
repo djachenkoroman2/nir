@@ -16,8 +16,10 @@
         {{ teacher.full_name }}
         {% if not teacher.is_active %}<span class="badge text-bg-secondary fs-6 align-middle">не работает на кафедре</span>{% endif %}
     </h1>
+    {% if form16_url and not is_cabinet %}<a href="{{ form16_url }}" class="btn btn-outline-secondary">Форма 16</a>{% endif %}
     {% if is_cabinet %}
         <div class="d-flex flex-wrap gap-2">
+            {% if form16_url %}<a href="{{ form16_url }}" class="btn btn-outline-secondary">Форма 16</a>{% endif %}
             {% if task_menu.attention %}<a href="{% url 'tasks:my_tasks' %}" class="btn btn-warning">Ждут внимания: {{ task_menu.attention }}</a>{% endif %}
             <a href="{% url 'publications:publication_create' %}" class="btn btn-outline-primary">Добавить публикацию</a>
             <a href="{% url 'ip:ip_create' %}" class="btn btn-outline-primary">Добавить РИД</a>

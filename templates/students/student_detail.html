@@ -16,8 +16,10 @@
         {{ student.full_name }}
         <span class="badge {{ student.status_badge }} fs-6 align-middle">{{ student.get_status_display }}</span>
     </h1>
+    {% if form16_url and not is_cabinet %}<a href="{{ form16_url }}" class="btn btn-outline-secondary">Форма 16</a>{% endif %}
     {% if is_cabinet %}
         <div class="d-flex flex-wrap gap-2">
+            {% if form16_url %}<a href="{{ form16_url }}" class="btn btn-outline-secondary">Форма 16</a>{% endif %}
             <a href="{% url 'publications:publication_create' %}" class="btn btn-outline-primary">Добавить публикацию</a>
             <a href="{% url 'conferences:report_choose' %}" class="btn btn-outline-primary">Добавить доклад</a>
             <a href="{% url 'students:achievement_create' student.pk %}" class="btn btn-outline-primary">Добавить достижение</a>

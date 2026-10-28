@@ -23,6 +23,8 @@
                         {% if cabinet_role == 'teacher' %}
                             <li class="nav-item"><a class="nav-link" href="{{ cabinet_person.get_absolute_url }}#supervision">Мои подопечные</a></li>
                         {% endif %}
+                        {% url 'reports:report_list' as reports_url %}
+                        <li class="nav-item"><a class="nav-link{% if reports_url in request.path %} active{% endif %}" href="{{ reports_url }}">Отчёты</a></li>
                     {% else %}
                     {% url 'staff:teacher_list' as teachers_url %}
                     {% url 'research:project_list' as research_url %}
@@ -55,6 +57,10 @@
                     {% url 'adjuncts:adjunct_list' as adjuncts_url %}
                     <li class="nav-item">
                         <a class="nav-link{% if adjuncts_url in request.path %} active{% endif %}" href="{{ adjuncts_url }}">Адъюнктура</a>
+                    </li>
+                    {% url 'reports:report_list' as reports_url %}
+                    <li class="nav-item">
+                        <a class="nav-link{% if reports_url in request.path %} active{% endif %}" href="{{ reports_url }}">Отчёты</a>
                     </li>
                     {% if user.is_staff %}
                         <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Администрирование</a></li>

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Форма № 16{% if person %}: {{ person.short_name }}{% endif %} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="d-print-none">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'reports:report_list' %}">Отчёты</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Форма № 16</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 d-print-none">
+    <h1 class="h3 mb-0">Форма № 16 — список трудов</h1>
+    {% if report %}
+        <div class="d-flex gap-2">
+            <a href="{% querystring format='docx' %}" class="btn btn-primary">Скачать DOCX</a>
+            <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Версия для печати</button>
+        </div>
+    {% endif %}
+</div>
+
+<form method="get" class="card shadow-sm mb-3 d-print-none" novalidate>
+    <div class="card-body">
+        <input type="hidden" name="submitted" value="1">
+        {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+        <div class="row g-3 align-items-end">
+            {% if form.person %}<div class="col-md-4">{% include 'includes/form_field.html' with field=form.person %}</div>{% endif %}
+            <div class="col-6 col-md-2">{% include 'includes/form_field.html' with field=form.year_from %}</div>
+            <div class="col-6 col-md-2">{% include 'includes/form_field.html' with field=form.year_to %}</div>
+            <div class="col-md-4">{% include 'includes/form_field.html' with field=form.sections %}</div>
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Сформировать</button>
+        <div class="form-text">В форму входят опубликованные труды. Доклад попадает в список своими опубликованными тезисами; доклады без опубликованных тезисов не включаются.</div>
+    </div>
+</form>
+
+{% if report %}
+    <div class="bg-white p-3 p-md-4 shadow-sm rounded">
+        <div class="text-center mb-3">
+            <div class="fw-bold">СПИСОК</div>
+            <div class="fw-bold">научных и учебно-методических трудов</div>
+            <div>Автор: {{ report.person.full_name }}</div>
+            <div>{{ report.position }}</div>
+            {% if report.period %}<div>Период: {{ report.period }}</div>{% endif %}
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle small mb-4">
+                <thead class="table-light text-center">
+                <tr>
+                    <th>№ п/п</th><th>Наименование работы, её вид</th><th>Форма работы</th><th>Выходные данные</th>
+                    <th>Объём, п. л. или с.</th><th>Соавторы</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for section in report.sections %}
+                    <tr><th colspan="6" class="text-center">{{ section.number }}. {{ section.title }}</th></tr>
+                    {% for row in section.rows %}
+                        <tr>
+                            <td class="text-center">{{ row.number }}.</td>
+                            <td>{{ row.title }}</td>
+                            <td class="text-center">{{ row.work_form }}</td>
+                            <td>{{ row.imprint }}</td>
+                            <td class="text-center text-nowrap">{{ row.volume }}</td>
+                            <td>{{ row.coauthors }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted">нет</td></tr>
+                    {% endfor %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="mb-3">Автор _______________ {{ report.signature }}</p>
+        <p class="mb-1">Список верен:</p>
+        <p class="mb-3">Заведующий кафедрой _______________</p>
+        <p class="mb-3">Учёный секретарь _______________</p>
+        <p class="mb-0 text-muted">Дата формирования: {{ report.created|date:'d.m.Y' }}</p>
+    </div>
+{% elif not person %}
+    <div class="card shadow-sm"><div class="card-body text-muted">Выберите человека и нажмите «Сформировать».</div></div>
+{% endif %}
+{% endblock %}

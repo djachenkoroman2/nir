@@ -33,6 +33,8 @@
                 {% empty %}—{% endfor %}
             </dd>
             <dt class="col-sm-4">Выходные данные</dt><dd class="col-sm-8">{{ publication.imprint }}</dd>
+            <dt class="col-sm-4">Форма работы</dt>
+            <dd class="col-sm-8">{{ publication.get_work_form_display }}{% if publication.print_sheets is not None %}, {{ publication.print_sheets }} п. л.{% endif %}</dd>
             {% if publication.doi %}
                 <dt class="col-sm-4">DOI</dt><dd class="col-sm-8"><a href="https://doi.org/{{ publication.doi }}" target="_blank" rel="noopener">{{ publication.doi }}</a></dd>
             {% endif %}

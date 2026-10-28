@@ -20,6 +20,7 @@ from apps.adjuncts.models import Adjunct, AdjunctAchievement, PlanStage, Task, T
 from apps.conferences.models import Conference, Report
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
+from apps.reports.access import person_report_rule
 from apps.research.models import ResearchProject
 from apps.schools.models import ScientificSchool
 from apps.staff.models import Teacher
@@ -108,6 +109,10 @@ def supervised_parent(model, kwarg):
 
 
 COMMON = {
+    # Отчёты о трудах: на себя, а руководителю — и на подопечных (apps.reports.access).
+    'reports:report_list': anything,
+    'reports:form16_own': anything,
+    'reports:form16': person_report_rule,
     'login': anything,
     'logout': anything,
     'core:home': anything,

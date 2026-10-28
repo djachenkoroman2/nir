@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Отчёты — {{ block.super }}{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Отчёты</h1>
+
+<div class="row g-3">
+    {% for report in reports %}
+        <div class="col-12 col-md-6">
+            <a href="{{ report.url }}" class="card h-100 text-decoration-none shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5 card-title">{{ report.title }}</h2>
+                    <p class="card-text text-muted mb-0">{{ report.description }}</p>
+                </div>
+            </a>
+        </div>
+    {% empty %}
+        <div class="col-12"><div class="card shadow-sm"><div class="card-body text-muted">Доступных отчётов нет: отчёты о трудах формируются для преподавателей, адъюнктов и курсантов с учётной записью.</div></div></div>
+    {% endfor %}
+</div>
+{% endblock %}

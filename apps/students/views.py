@@ -10,6 +10,7 @@ from apps.adjuncts.models import Task
 from apps.adjuncts.views import tasks_context
 from apps.core.permissions import get_person
 from apps.core.search import search
+from apps.reports.access import form16_url_for
 from apps.core.views import RecordPermissionRequiredMixin
 from apps.staff.models import Teacher
 
@@ -89,6 +90,7 @@ class StudentDetailView(LoginRequiredMixin, DetailView):
         context.update(tasks_context(self.request.user, self.object))
         # Курсант смотрит свою карточку — это его личный кабинет.
         context['is_cabinet'] = self.object.is_authored_by(get_person(self.request.user))
+        context['form16_url'] = form16_url_for(self.request.user, self.object)
         return context
 
 
