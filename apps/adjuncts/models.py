@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.staff.models import ProtectedRelationsMixin, Teacher
+from apps.staff.models import ProtectedRelationsMixin, Teacher, validate_free_account
 from apps.students.models import AchievementBase, Student
 
 from .study import academic_course
@@ -86,8 +86,8 @@ class Adjunct(ProtectedRelationsMixin, models.Model):
         return reverse('adjuncts:adjunct_tasks', args=[self.pk])
 
     def clean(self):
-        if self.user_id and Teacher.objects.filter(user_id=self.user_id).exists():
-            raise ValidationError({'user': 'Эта учётная запись уже привязана к карточке преподавателя.'})
+        if self.user_id:
+            validate_free_account(self.user, 'adjunct')
 
     def is_supervised_by(self, teacher):
         return self.supervisor_id == teacher.pk
@@ -219,9 +219,10 @@ class Task(models.Model):
         CANCELLED = 'cancelled', 'отменена'
 
     OPEN_STATUSES = (Status.NEW, Status.IN_PROGRESS, Status.REVIEW)
-    # У курсанта нет учётной записи: задачу ведёт руководитель, поэтому «на проверке» не нужна.
+    # Курсант без учётной записи в системе не работает: задачу ведёт руководитель, «на проверке» не нужна.
     STUDENT_STATUSES = (Status.NEW, Status.IN_PROGRESS, Status.DONE, Status.CANCELLED)
-    # Переходы, доступные самому адъюнкту; руководитель и редактор переводят задачу в любой статус.
+    # Переходы, доступные самому исполнителю (адъюнкту или курсанту с учётной записью);
+    # руководитель и редактор переводят задачу в любой статус.
     ADJUNCT_TRANSITIONS = {
         Status.NEW: [Status.IN_PROGRESS],
         Status.IN_PROGRESS: [Status.REVIEW],
@@ -293,17 +294,24 @@ class Task(models.Model):
         """Исполнитель: адъюнкт или курсант."""
         return self.adjunct if self.adjunct_id else self.student
 
+    @classmethod
+    def statuses_for(cls, owner):
+        """Статусы задач исполнителя owner: у курсанта без учётной записи нет «на проверке»."""
+        if isinstance(owner, Student) and not owner.user_id:
+            return cls.STUDENT_STATUSES
+        return tuple(cls.Status)
+
     @property
     def statuses(self):
         """Статусы, допустимые для задачи этого исполнителя."""
-        return self.STUDENT_STATUSES if self.student_id else tuple(self.Status)
+        return self.statuses_for(self.person)
 
     def is_supervised_by(self, teacher):
         return self.person.is_supervised_by(teacher)
 
     def is_authored_by(self, person):
-        # Сам с задачей работает только адъюнкт: у курсанта нет учётной записи.
-        return self.adjunct_id is not None and self.adjunct.is_authored_by(person)
+        # Сам с задачей работает исполнитель, если у него есть учётная запись.
+        return self.person.is_authored_by(person)
 
     def set_status(self, status):
         """Меняет статус; дата завершения заполняется при переходе в «выполнена» и сбрасывается иначе."""

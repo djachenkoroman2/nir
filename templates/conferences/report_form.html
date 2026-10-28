@@ -5,8 +5,8 @@
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'conferences:conference_list' %}">Конференции</a></li>
-        <li class="breadcrumb-item"><a href="{{ conference.get_absolute_url }}">{{ conference.title|truncatechars:60 }}</a></li>
+        {% url 'conferences:conference_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='Конференции' %}
+        <li class="breadcrumb-item">{% if cabinet_student %}{{ conference.title|truncatechars:60 }}{% else %}<a href="{{ conference.get_absolute_url }}">{{ conference.title|truncatechars:60 }}</a>{% endif %}</li>
         <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение доклада{% else %}Новый доклад{% endif %}</li>
     </ol>
 </nav>

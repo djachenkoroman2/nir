@@ -9,7 +9,7 @@
                 {% if publication.indexing %}<div class="mt-1">{% include 'includes/indexing_badges.html' %}</div>{% endif %}
             </li>
         {% empty %}
-            <li class="list-group-item text-muted">Публикаций нет. Чтобы добавить публикацию, укажите {{ who }} среди её авторов в разделе «Публикации».</li>
+            <li class="list-group-item text-muted">Публикаций нет.{% if not cabinet_student %} Чтобы добавить публикацию, укажите {{ who }} среди её авторов в разделе «Публикации».{% endif %}</li>
         {% endfor %}
     </ul>
 </div>

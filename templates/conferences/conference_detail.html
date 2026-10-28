@@ -6,7 +6,7 @@
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'conferences:conference_list' %}">Конференции</a></li>
+        {% url 'conferences:conference_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='Конференции' %}
         <li class="breadcrumb-item active" aria-current="page">{{ conference.title|truncatechars:60 }}</li>
     </ol>
 </nav>

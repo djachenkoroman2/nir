@@ -11,7 +11,7 @@
                         <div class="small text-muted">
                             {{ achievement.get_kind_display|capfirst }}, {{ achievement.get_level_display }} уровень,
                             {{ achievement.date|date:'d.m.Y' }}{% if achievement.supervisor %}, руководитель
-                            <a href="{{ achievement.supervisor.get_absolute_url }}">{{ achievement.supervisor }}</a>{% endif %}
+                            {% if cabinet_student %}{{ achievement.supervisor }}{% else %}<a href="{{ achievement.supervisor.get_absolute_url }}">{{ achievement.supervisor }}</a>{% endif %}{% endif %}
                         </div>
                         {% if achievement.document %}
                             <div class="small">

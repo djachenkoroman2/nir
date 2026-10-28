@@ -8,6 +8,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from apps.adjuncts.access import can_view_tasks
 from apps.adjuncts.models import Task
 from apps.adjuncts.views import tasks_context
+from apps.core.permissions import get_person
 from apps.core.search import search
 from apps.core.views import RecordPermissionRequiredMixin
 from apps.staff.models import Teacher
@@ -86,6 +87,8 @@ class StudentDetailView(LoginRequiredMixin, DetailView):
         achievements = list(self.object.achievements.select_related('supervisor'))
         context.update(works_context(self.object, achievements))
         context.update(tasks_context(self.request.user, self.object))
+        # Курсант смотрит свою карточку — это его личный кабинет.
+        context['is_cabinet'] = self.object.is_authored_by(get_person(self.request.user))
         return context
 
 

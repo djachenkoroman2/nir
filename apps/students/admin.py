@@ -27,10 +27,11 @@ class StudentAchievementInline(admin.TabularInline):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ['full_name', 'group', 'course', 'supervisor', 'status']
-    list_filter = ['course', 'status', 'supervisor']
+    list_display = ['full_name', 'group', 'course', 'supervisor', 'status', 'user']
+    # «Учётная запись: пусто / не пусто» — у кого из курсантов есть личный кабинет.
+    list_filter = ['course', 'status', 'supervisor', ('user', admin.EmptyFieldListFilter)]
     search_fields = ['last_name', 'first_name', 'middle_name', 'group']
-    autocomplete_fields = ['supervisor']
+    autocomplete_fields = ['supervisor', 'user']
     inlines = [StudentAchievementInline]
 
     @admin.display(description='ФИО', ordering='last_name')

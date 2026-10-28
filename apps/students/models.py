@@ -1,8 +1,9 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.conf import settings
 from django.db import models
 from django.urls import reverse
 
-from apps.staff.models import ProtectedRelationsMixin, Teacher
+from apps.staff.models import ProtectedRelationsMixin, Teacher, validate_free_account
 
 
 class Student(ProtectedRelationsMixin, models.Model):
@@ -30,6 +31,10 @@ class Student(ProtectedRelationsMixin, models.Model):
     )
     status = models.CharField('статус', max_length=20, choices=Status.choices, default=Status.STUDYING)
     note = models.TextField('примечание', blank=True)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, verbose_name='учётная запись', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='student', help_text='Курсант с учётной записью ведёт личный кабинет (группа «Курсанты»).',
+    )
 
     class Meta:
         verbose_name = 'курсант'
@@ -45,8 +50,16 @@ class Student(ProtectedRelationsMixin, models.Model):
     def get_tasks_url(self):
         return reverse('students:student_tasks', args=[self.pk])
 
+    def clean(self):
+        if self.user_id:
+            validate_free_account(self.user, 'student')
+
     def is_supervised_by(self, teacher):
         return self.supervisor_id == teacher.pk
+
+    def is_authored_by(self, person):
+        """Своя запись курсанта (его карточка и вложенные записи); курсант и преподаватель с тем же pk — разные люди."""
+        return isinstance(person, Student) and person.pk == self.pk
 
     @property
     def status_badge(self):
@@ -123,3 +136,6 @@ class StudentAchievement(AchievementBase):
 
     def is_supervised_by(self, teacher):
         return self.student.is_supervised_by(teacher)
+
+    def is_authored_by(self, person):
+        return self.student.is_authored_by(person)

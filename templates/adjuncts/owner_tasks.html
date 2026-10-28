@@ -5,7 +5,7 @@
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{{ section_url }}">{{ section_title }}</a></li>
+        {% include 'includes/section_crumb.html' with url=section_url title=section_title %}
         <li class="breadcrumb-item"><a href="{{ owner.get_absolute_url }}">{{ owner.short_name }}</a></li>
         <li class="breadcrumb-item active" aria-current="page">Задачи</li>
     </ol>

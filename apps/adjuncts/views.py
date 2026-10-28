@@ -376,7 +376,7 @@ class OwnerTaskListView(LoginRequiredMixin, TaskOwnerMixin, TaskFilterMixin, Lis
 
     @property
     def statuses(self):
-        return Task.STUDENT_STATUSES if self.owner_model is Student else tuple(Task.Status)
+        return Task.statuses_for(self.owner)
 
     def get_queryset(self):
         return self.filter_status(self.owner.tasks.select_related('plan_stage'))
@@ -458,7 +458,7 @@ class TaskDetailView(VisibleTaskMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         task, user = self.object, self.request.user
-        comments = list(task.comments.select_related('author__teacher', 'author__adjunct'))
+        comments = list(task.comments.select_related('author__teacher', 'author__adjunct', 'author__student'))
         for comment in comments:
             comment.deletable = comment.can_be_deleted_by(user) and user.has_perm('adjuncts.delete_taskcomment')
         context.update({

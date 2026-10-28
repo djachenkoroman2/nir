@@ -66,6 +66,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    # Курсант видит только свой личный кабинет и свои записи (белый список страниц).
+    'apps.students.cabinet.StudentCabinetMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -82,6 +84,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'apps.adjuncts.context_processors.task_menu',
+                'apps.students.cabinet.cabinet',
             ],
         },
     },
@@ -119,6 +122,8 @@ else:
 # Пользователи и аутентификация
 
 AUTH_USER_MODEL = 'accounts.User'
+# Пользователь загружается вместе с карточкой преподавателя, адъюнкта или курсанта (один запрос вместо четырёх).
+AUTHENTICATION_BACKENDS = ['apps.accounts.backends.PersonModelBackend']
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'core:home'

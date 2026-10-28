@@ -6,7 +6,7 @@
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'students:student_list' %}">Курсанты</a></li>
+        {% url 'students:student_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='Курсанты' %}
         <li class="breadcrumb-item active" aria-current="page">{{ student.short_name }}</li>
     </ol>
 </nav>
@@ -16,6 +16,13 @@
         {{ student.full_name }}
         <span class="badge {{ student.status_badge }} fs-6 align-middle">{{ student.get_status_display }}</span>
     </h1>
+    {% if is_cabinet %}
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'publications:publication_create' %}" class="btn btn-outline-primary">Добавить публикацию</a>
+            <a href="{% url 'conferences:report_choose' %}" class="btn btn-outline-primary">Добавить доклад</a>
+            <a href="{% url 'students:achievement_create' student.pk %}" class="btn btn-outline-primary">Добавить достижение</a>
+        </div>
+    {% endif %}
     {% can user 'students.change_student' student as can_change %}{% can user 'students.delete_student' student as can_delete %}
     {% if can_change or can_delete %}
         <div class="d-flex gap-2">
@@ -31,7 +38,7 @@
             <dt class="col-sm-4">Учебная группа</dt><dd class="col-sm-8">{{ student.group }}</dd>
             <dt class="col-sm-4">Курс</dt><dd class="col-sm-8">{{ student.course }}</dd>
             <dt class="col-sm-4">Научный руководитель</dt>
-            <dd class="col-sm-8">{% if student.supervisor %}<a href="{{ student.supervisor.get_absolute_url }}">{{ student.supervisor.full_name }}</a>{% else %}—{% endif %}</dd>
+            <dd class="col-sm-8">{% if not student.supervisor %}—{% elif cabinet_student %}{{ student.supervisor.full_name }}{% else %}<a href="{{ student.supervisor.get_absolute_url }}">{{ student.supervisor.full_name }}</a>{% endif %}</dd>
             {% if student.note %}
                 <dt class="col-sm-4">Примечание</dt><dd class="col-sm-8 mb-0">{{ student.note|linebreaksbr }}</dd>
             {% endif %}
@@ -41,7 +48,7 @@
 
 {% include 'includes/person_summary.html' %}
 
-{# --- Задачи (только научному руководителю и редакторам) --- #}
+{# --- Задачи (только самому курсанту, научному руководителю и редакторам) --- #}
 {% include 'adjuncts/includes/task_block.html' %}
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">

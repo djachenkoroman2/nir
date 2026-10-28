@@ -1,11 +1,11 @@
 """Кто видит задачи адъюнктов и курсантов и что может с ними делать.
 
 Исполнитель задачи (owner) — адъюнкт или курсант. Задачи не публичные: их видят только научный руководитель
-исполнителя, редакторы и сам адъюнкт (у курсанта нет учётной записи).
+исполнителя, редакторы и сам исполнитель, если у него есть учётная запись.
 - Руководитель и редактор создают, изменяют, удаляют задачи и переводят их в любой допустимый статус.
-- Адъюнкт меняет статус только по цепочке «новая → в работе → на проверке» и может вернуть задачу
+- Исполнитель меняет статус только по цепочке «новая → в работе → на проверке» и может вернуть задачу
   с проверки в работу; «выполнена» ставит руководитель — это приёмка.
-- Задачи курсанта ведут только руководитель и редакторы; статуса «на проверке» у них нет.
+- Задачи курсанта без учётной записи ведут только руководитель и редакторы; статуса «на проверке» у них нет.
 - Комментировать могут все, кто видит задачу.
 """
 from django.contrib.auth import get_user_model
@@ -52,7 +52,10 @@ def visible_tasks(user):
         return tasks.none()
     if user.is_staff:
         return tasks
-    return tasks.filter(Q(adjunct__user=user) | Q(adjunct__supervisor__user=user) | Q(student__supervisor__user=user))
+    return tasks.filter(
+        Q(adjunct__user=user) | Q(adjunct__supervisor__user=user)
+        | Q(student__user=user) | Q(student__supervisor__user=user)
+    )
 
 
 def allowed_transitions(user, task):
@@ -68,25 +71,28 @@ def allowed_transitions(user, task):
 def attention_count(user):
     """Сколько задач ждут пользователя.
 
-    Адъюнкту — новые; руководителю — задачи адъюнктов на проверке и просроченные открытые задачи курсантов
-    (курсант сам статус не меняет, поэтому руководителю важен срок).
+    Адъюнкту и курсанту — новые; руководителю — задачи на проверке и просроченные открытые задачи курсантов
+    без учётной записи (такой курсант сам статус не меняет, поэтому руководителю важен срок).
     """
     return Task.objects.filter(
         Q(adjunct__user=user, status=Task.Status.NEW)
+        | Q(student__user=user, status=Task.Status.NEW)
         | Q(adjunct__supervisor__user=user, status=Task.Status.REVIEW)
-        | Q(student__supervisor__user=user, status__in=Task.OPEN_STATUSES, due_date__lt=timezone.localdate())
+        | Q(student__supervisor__user=user, status=Task.Status.REVIEW)
+        | Q(student__supervisor__user=user, student__user__isnull=True, status__in=Task.OPEN_STATUSES,
+            due_date__lt=timezone.localdate())
     ).count()
 
 
 def attention_title(user):
     """Подсказка к счётчику в шапке: что именно он считает."""
-    if isinstance(get_person(user), Adjunct):
+    if isinstance(get_person(user), (Adjunct, Student)):
         return 'Новые задачи'
-    return 'Задачи адъюнктов на проверке и просроченные задачи курсантов'
+    return 'Задачи на проверке и просроченные задачи курсантов без учётной записи'
 
 
 def has_task_menu(user):
-    """Показывать ли пункт «Мои задачи»: редактор, адъюнкт или руководитель адъюнктов либо курсантов."""
+    """Показывать ли пункт «Мои задачи»: редактор, адъюнкт, курсант или руководитель адъюнктов либо курсантов."""
     if not user.is_authenticated:
         return False
     if user.is_staff:
@@ -94,6 +100,6 @@ def has_task_menu(user):
     # Один запрос вместо двух: меню проверяется на каждой странице.
     return get_user_model().objects.filter(
         Exists(Adjunct.objects.filter(Q(user=user) | Q(supervisor__user=user)))
-        | Exists(Student.objects.filter(supervisor__user=user)),
+        | Exists(Student.objects.filter(Q(user=user) | Q(supervisor__user=user))),
         pk=user.pk,
     ).exists()

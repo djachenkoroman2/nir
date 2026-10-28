@@ -4,6 +4,17 @@ from django.db import models
 from django.urls import reverse
 
 
+# Карточки людей кафедры, к которым привязывается учётная запись: обратная связь User → карточка.
+PERSON_ACCOUNT_RELATIONS = {'teacher': 'преподавателя', 'adjunct': 'адъюнкта', 'student': 'курсанта'}
+
+
+def validate_free_account(user, own_relation):
+    """Одна учётная запись — один человек: запись не должна быть привязана к карточке другого вида."""
+    for relation, label in PERSON_ACCOUNT_RELATIONS.items():
+        if relation != own_relation and hasattr(user, relation):
+            raise ValidationError({'user': f'Эта учётная запись уже привязана к карточке {label}.'})
+
+
 class ProtectedRelationsMixin:
     def has_protected_relations(self):
         """Есть ли записи, которые ссылаются на объект с on_delete=PROTECT (тогда удалять нельзя)."""
@@ -71,8 +82,8 @@ class Teacher(ProtectedRelationsMixin, models.Model):
         return reverse('staff:teacher_detail', args=[self.pk])
 
     def clean(self):
-        if self.user_id and hasattr(self.user, 'adjunct'):
-            raise ValidationError({'user': 'Эта учётная запись уже привязана к карточке адъюнкта.'})
+        if self.user_id:
+            validate_free_account(self.user, 'teacher')
 
     @property
     def full_name(self):

@@ -167,6 +167,10 @@ STUDENT_TASK_TITLES = [
     'Подготовить заявку на конкурс НИРС', 'Реализовать прототип программы', 'Оформить отчёт по НИР',
     'Подготовить доклад на заседание кружка', 'Провести эксперимент и описать результаты',
 ]
+# Демо-курсанты с личным кабинетом — первые курсанты списка (подопечные ivanov).
+STUDENT_LOGINS = ['student1', 'student2']
+STUDENT_COMMENTS = ['Приступил(а), к консультации покажу черновик.', 'Сделал(а), прошу посмотреть.',
+                    'Не успеваю из-за сессии, можно перенести срок?']
 STUDENT_TASK_COMMENTS = ['Обсудили на кружке, курсант приступил.', 'Черновик получен, нужны правки по оформлению.',
                          'Курсант просит перенести срок из-за сессии.', 'Результаты обсудим на консультации.']
 ADJUNCT_COMMENTS = ['Начал(а) работу, черновик будет к пятнице.', 'Есть вопрос по структуре, обсудим на встрече?',
@@ -207,6 +211,8 @@ class Command(DevOnlyCommand):
             self.stdout.write(f'  {login} — преподаватель {teacher} (группа «Преподаватели»)')
         for login, adjunct in DemoData.adjunct_logins():
             self.stdout.write(f'  {login} — адъюнкт {adjunct} (группа «Адъюнкты»), руководитель — ivanov')
+        for login, student in DemoData.student_logins():
+            self.stdout.write(f'  {login} — курсант {student} (группа «Курсанты»), руководитель — ivanov')
 
 
 def save(obj):
@@ -229,6 +235,12 @@ class DemoData:
     @staticmethod
     def adjunct_logins():
         return [(login, f'{last} {first[0]}. {middle[0]}.') for last, first, middle, *_, login in ADJUNCTS if login]
+
+    @staticmethod
+    def student_logins():
+        return [
+            (login, f'{last} {first[0]}. {middle[0]}.') for login, (last, first, middle) in zip(STUDENT_LOGINS, STUDENTS)
+        ]
 
     # --- вспомогательное ---
 
@@ -600,19 +612,21 @@ class DemoData:
                 ))
 
     def create_student_tasks(self):
-        """Задачи курсантов: их ведёт руководитель — статусы и заметки о ходе работы пишет он сам."""
+        """Задачи курсантов. Курсанты без учётной записи — задачу ведёт руководитель; демо-курсанты student1
+        и student2 входят в кабинет и сами двигают задачи по цепочке и комментируют."""
         studying = [s for s in self.students if s.status == Student.Status.STUDYING and s.supervisor]
         ivanov = self.demo_teachers[0]
+        self.create_student_accounts(ivanov)
         # Подопечные ivanov — обязательно, чтобы демо-преподавателю было что вести; плюс несколько чужих.
         own = [student for student in studying if student.supervisor == ivanov][:3]
         others = self.rnd.sample([student for student in studying if student.supervisor != ivanov], 3)
-        statuses = list(Task.STUDENT_STATUSES)
         now = timezone.now()
         for index, student in enumerate(own + others):
-            supervisor_user = student.supervisor.user
+            supervisor_user, student_user = student.supervisor.user, student.user
+            statuses = list(Task.statuses_for(student))
             count = self.rnd.randint(2, 4)
             # У первого курсанта ivanov — все статусы; дальше — случайные.
-            task_statuses = statuses if index == 0 else self.rnd.choices(statuses, weights=[3, 4, 2, 1], k=count)
+            task_statuses = statuses if index == 0 else self.rnd.choices(statuses, k=count)
             for number, (status, title) in enumerate(
                 zip(task_statuses, self.rnd.sample(STUDENT_TASK_TITLES, len(task_statuses)))
             ):
@@ -632,9 +646,39 @@ class DemoData:
                 moment = created + datetime.timedelta(hours=self.rnd.randint(2, 72))
                 save(TaskComment(task=task, author=supervisor_user, created_at=moment,
                                  text=self.rnd.choice(STUDENT_TASK_COMMENTS)))
+                if student_user is not None:
+                    moment += datetime.timedelta(hours=self.rnd.randint(2, 48))
+                    save(TaskComment(task=task, author=student_user, created_at=moment,
+                                     text=self.rnd.choice(STUDENT_COMMENTS)))
                 if status != Task.Status.NEW:
+                    # Курсант с учётной записью сам двигает задачу по цепочке; принимает и отменяет руководитель.
+                    by_supervisor = status in (Task.Status.DONE, Task.Status.CANCELLED) or student_user is None
                     save(TaskComment(
-                        task=task, author=supervisor_user, is_system=True,
+                        task=task, author=supervisor_user if by_supervisor else student_user, is_system=True,
                         created_at=moment + datetime.timedelta(hours=self.rnd.randint(1, 24)),
                         text=f'Смена статуса: {Task.Status.NEW.label} → {task.get_status_display()}',
                     ))
+
+    def create_student_accounts(self, ivanov):
+        """Учётные записи student1 и student2; у каждого в портфолио есть публикация, доклад и достижение."""
+        ivanov_publications = list(Publication.objects.filter(authors__teacher=ivanov).order_by('pk'))
+        ivanov_reports = list(Report.objects.filter(speakers__teacher=ivanov).order_by('pk'))
+        for index, (login, student) in enumerate(zip(STUDENT_LOGINS, self.students)):
+            assert student.supervisor == ivanov and student.status == Student.Status.STUDYING
+            student.user = self.demo_user(login, 'Курсанты', first_name=student.first_name,
+                                          last_name=student.last_name, is_staff=False)
+            save(student)
+            if not student.publicationauthor_set.exists():
+                publication = ivanov_publications[index]
+                save(PublicationAuthor(publication=publication, student=student,
+                                       order=publication.authors.count() + 1))
+            if not student.reportspeaker_set.exists():
+                report = ivanov_reports[index]
+                save(ReportSpeaker(report=report, student=student, order=report.speakers.count() + 1))
+            if not student.achievements.exists():
+                kind = self.rnd.choice(list(StudentAchievement.Kind))
+                save(StudentAchievement(
+                    student=student, kind=kind, level=StudentAchievement.Level.UNIVERSITY,
+                    title=self.rnd.choice(ACHIEVEMENT_TITLES[kind]), result=self.rnd.choice(ACHIEVEMENT_RESULTS),
+                    date=self.date_in(self.today.year), supervisor=ivanov,
+                ))

@@ -1,15 +1,15 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count
-from django.shortcuts import get_object_or_404
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, UpdateView
 
 from apps.core.search import search
 from apps.core.views import AuthorFormSetMixin, RecordPermissionRequiredMixin
 from apps.staff.models import SPEAKERS_PREFETCH
 
-from .forms import ConferenceForm, ReportForm, ReportSpeakerFormSet
+from .forms import ConferenceChoiceForm, ConferenceForm, ReportForm, ReportSpeakerFormSet
 from .models import Conference, Report
 
 
@@ -63,6 +63,12 @@ class ConferenceCreateView(RecordPermissionRequiredMixin, CreateView):
         messages.success(self.request, 'Конференция добавлена. Теперь можно добавить доклады.')
         return super().form_valid(form)
 
+    def get_success_url(self):
+        # Конференцию добавили со страницы выбора мероприятия для доклада — сразу к форме доклада.
+        if self.request.GET.get('then') == 'report':
+            return reverse('conferences:report_create', args=[self.object.pk])
+        return super().get_success_url()
+
 
 class ConferenceUpdateView(RecordPermissionRequiredMixin, UpdateView):
     model = Conference
@@ -84,7 +90,24 @@ class ConferenceDeleteView(RecordPermissionRequiredMixin, DeleteView):
         return super().form_valid(form)
 
 
-class ReportCreateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, CreateView):
+class ReportConferenceChoiceView(RecordPermissionRequiredMixin, FormView):
+    """Первый шаг добавления доклада без перехода через список конференций: выбор мероприятия."""
+
+    form_class = ConferenceChoiceForm
+    template_name = 'conferences/report_conference_choice.html'
+    permission_required = 'conferences.add_report'
+
+    def form_valid(self, form):
+        return redirect('conferences:report_create', form.cleaned_data['conference'].pk)
+
+
+class ReportFormKwargsMixin:
+    def get_form_kwargs(self):
+        # Курсанту в кабинете чужие данные закрыты — в выборе публикации только его собственные.
+        return {**super().get_form_kwargs(), 'own_publications_of': getattr(self.request, 'cabinet_student', None)}
+
+
+class ReportCreateView(ReportFormKwargsMixin, RecordPermissionRequiredMixin, AuthorFormSetMixin, CreateView):
     model = Report
     form_class = ReportForm
     formset_class = ReportSpeakerFormSet
@@ -106,7 +129,7 @@ class ReportCreateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, Create
         return context
 
 
-class ReportUpdateView(RecordPermissionRequiredMixin, AuthorFormSetMixin, UpdateView):
+class ReportUpdateView(ReportFormKwargsMixin, RecordPermissionRequiredMixin, AuthorFormSetMixin, UpdateView):
     model = Report
     form_class = ReportForm
     formset_class = ReportSpeakerFormSet

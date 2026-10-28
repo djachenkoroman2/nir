@@ -6,7 +6,7 @@
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'ip:ip_list' %}">РИД</a></li>
+        {% url 'ip:ip_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='РИД' %}
         <li class="breadcrumb-item active" aria-current="page">{{ intellectualproperty.title|truncatechars:60 }}</li>
     </ol>
 </nav>
@@ -40,9 +40,9 @@
                 <dt class="col-sm-4">Ссылка</dt><dd class="col-sm-8 text-break"><a href="{{ intellectualproperty.url }}" target="_blank" rel="noopener">{{ intellectualproperty.url }}</a></dd>
             {% endif %}
             <dt class="col-sm-4">Научные школы</dt>
-            <dd class="col-sm-8">{% for school in intellectualproperty.schools.all %}<a href="{{ school.get_absolute_url }}">{{ school }}</a>{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+            <dd class="col-sm-8">{% for school in intellectualproperty.schools.all %}{% if cabinet_student %}{{ school }}{% else %}<a href="{{ school.get_absolute_url }}">{{ school }}</a>{% endif %}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
             <dt class="col-sm-4">НИОКР</dt>
-            <dd class="col-sm-8 mb-0">{% if intellectualproperty.project %}<a href="{{ intellectualproperty.project.get_absolute_url }}">{{ intellectualproperty.project }}</a>{% else %}—{% endif %}</dd>
+            <dd class="col-sm-8 mb-0">{% if intellectualproperty.project %}{% if cabinet_student %}{{ intellectualproperty.project }}{% else %}<a href="{{ intellectualproperty.project.get_absolute_url }}">{{ intellectualproperty.project }}</a>{% endif %}{% else %}—{% endif %}</dd>
         </dl>
     </div>
 </div>

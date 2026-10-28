@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.db import transaction
 from django.http import HttpResponseRedirect
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
@@ -20,6 +20,10 @@ from apps.students.models import Student, StudentAchievement
 
 @login_required
 def home(request):
+    person = get_person(request.user)
+    if isinstance(person, Student):
+        # Личный кабинет курсанта — его карточка с портфолио и задачами; разделы системы ему закрыты.
+        return redirect(person)
     year = timezone.localdate().year
     sections = [
         {
@@ -58,7 +62,6 @@ def home(request):
         },
     ]
     context = {'sections': sections}
-    person = get_person(request.user)
     if isinstance(person, Adjunct):
         # Личный кабинет адъюнкта: ближайшие этапы плана и открытые задачи.
         context.update({

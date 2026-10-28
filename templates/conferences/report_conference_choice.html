@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Новый доклад — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        {% url 'conferences:conference_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='Конференции' %}
+        <li class="breadcrumb-item active" aria-current="page">Новый доклад</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-3">Новый доклад</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <p class="text-muted">Выберите конференцию, на которой сделан доклад. Если её нет в списке, сначала добавьте мероприятие.</p>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% include 'includes/form_field.html' with field=form.conference %}
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary">Далее</button>
+                <a href="{% url 'conferences:conference_create' %}?then=report" class="btn btn-outline-primary">Нет в списке — добавить конференцию</a>
+                <a href="{% if cabinet_student %}{% url 'core:home' %}{% else %}{% url 'conferences:conference_list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

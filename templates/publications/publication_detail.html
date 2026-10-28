@@ -6,7 +6,7 @@
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'publications:publication_list' %}">Публикации</a></li>
+        {% url 'publications:publication_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='Публикации' %}
         <li class="breadcrumb-item active" aria-current="page">{{ publication.title|truncatechars:60 }}</li>
     </ol>
 </nav>
@@ -42,9 +42,9 @@
             <dt class="col-sm-4">Индексирование</dt>
             <dd class="col-sm-8">{% if publication.indexing %}{% include 'includes/indexing_badges.html' %}{% else %}—{% endif %}</dd>
             <dt class="col-sm-4">Научные школы</dt>
-            <dd class="col-sm-8">{% for school in publication.schools.all %}<a href="{{ school.get_absolute_url }}">{{ school }}</a>{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+            <dd class="col-sm-8">{% for school in publication.schools.all %}{% if cabinet_student %}{{ school }}{% else %}<a href="{{ school.get_absolute_url }}">{{ school }}</a>{% endif %}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
             <dt class="col-sm-4">НИОКР</dt>
-            <dd class="col-sm-8">{% if publication.project %}<a href="{{ publication.project.get_absolute_url }}">{{ publication.project }}</a>{% else %}—{% endif %}</dd>
+            <dd class="col-sm-8">{% if publication.project %}{% if cabinet_student %}{{ publication.project }}{% else %}<a href="{{ publication.project.get_absolute_url }}">{{ publication.project }}</a>{% endif %}{% else %}—{% endif %}</dd>
             {% if publication.report %}
                 <dt class="col-sm-4">Доклад</dt>
                 <dd class="col-sm-8 mb-0">

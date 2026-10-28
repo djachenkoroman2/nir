@@ -76,8 +76,27 @@ class SeedDemoTests(TestCase):
         tasks = Task.objects.filter(student__isnull=False)
         self.assertTrue(tasks.filter(student__supervisor=ivanov, comments__isnull=False).exists())
         self.assertTrue(tasks.exclude(student__supervisor=ivanov).exists())
-        self.assertEqual(set(tasks.values_list('status', flat=True)), set(Task.STUDENT_STATUSES))
+        self.assertEqual(set(tasks.values_list('status', flat=True)), set(Task.Status.values))
+        self.assertEqual(set(tasks.filter(student__user__isnull=True).values_list('status', flat=True))
+                         - set(Task.STUDENT_STATUSES), set())
         self.assertTrue(any(task.is_overdue for task in tasks))
+
+    def test_student_accounts_with_portfolio_and_tasks(self):
+        run('seed_demo')
+        ivanov = User.objects.get(username='ivanov').teacher
+        for login in ('student1', 'student2'):
+            with self.subTest(login=login):
+                user = User.objects.get(username=login)
+                self.assertTrue(user.check_password(DEMO_PASSWORD))
+                self.assertTrue(user.groups.filter(name='Курсанты').exists())
+                student = user.student
+                self.assertEqual(student.supervisor, ivanov)
+                self.assertTrue(student.publicationauthor_set.exists())
+                self.assertTrue(student.reportspeaker_set.exists())
+                self.assertTrue(student.achievements.exists())
+                self.assertTrue(TaskComment.objects.filter(task__student=student, author=user).exists())
+        student1_statuses = set(User.objects.get(username='student1').student.tasks.values_list('status', flat=True))
+        self.assertEqual(student1_statuses, set(Task.Status.values))
 
     def test_adjuncts_with_accounts_plans_tasks_and_defense(self):
         run('seed_demo')
@@ -163,7 +182,7 @@ class ClearDataTests(TestCase):
         output = run('clear_data', username='nobody', noinput=True)
         self.assertIn('не найден', output)
         self.assertTrue(Publication.objects.exists())
-        self.assertEqual(User.objects.count(), 7)  # admin, editor, 3 преподавателя, 2 адъюнкта
+        self.assertEqual(User.objects.count(), 9)  # admin, editor, 3 преподавателя, 2 адъюнкта, 2 курсанта
 
     def test_asks_for_confirmation(self):
 

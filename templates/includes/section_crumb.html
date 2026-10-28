@@ -1,0 +1,2 @@
+{# Первая ссылка хлебных крошек — раздел; курсанту, которому разделы закрыты, — его кабинет. Параметры: url, title. #}
+{% if cabinet_student %}<li class="breadcrumb-item"><a href="{% url 'core:home' %}">Мой кабинет</a></li>{% else %}<li class="breadcrumb-item"><a href="{{ url }}">{{ title }}</a></li>{% endif %}
