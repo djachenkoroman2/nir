@@ -21,7 +21,7 @@
             <div class="d-flex flex-wrap gap-2">
                 <button type="submit" class="btn btn-primary">Далее</button>
                 <a href="{% url 'conferences:conference_create' %}?then=report" class="btn btn-outline-primary">Нет в списке — добавить конференцию</a>
-                <a href="{% if cabinet_student %}{% url 'core:home' %}{% else %}{% url 'conferences:conference_list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
+                <a href="{% if cabinet_person %}{% url 'core:home' %}{% else %}{% url 'conferences:conference_list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
             </div>
         </form>
     </div>

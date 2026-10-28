@@ -7,7 +7,7 @@
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% if section_url %}{{ section_url }}{% else %}{% url 'adjuncts:adjunct_list' %}{% endif %}">{{ section_title|default:'Адъюнктура' }}</a></li>
+        {% url 'adjuncts:adjunct_list' as adjunct_list_url %}{% include 'includes/section_crumb.html' with url=section_url|default:adjunct_list_url title=section_title|default:'Адъюнктура' %}
         {% block breadcrumbs %}{% endblock %}
     </ol>
 </nav>

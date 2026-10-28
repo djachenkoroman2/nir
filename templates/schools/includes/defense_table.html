@@ -1,4 +1,4 @@
-<div class="card shadow-sm">
+{% load cabinet %}<div class="card shadow-sm">
     <div class="table-responsive">
         <table class="table align-middle mb-0 small">
             <thead class="table-light">
@@ -7,11 +7,11 @@
             <tbody>
             {% for defense in items %}
                 <tr>
-                    <td>{% if defense.teacher %}<a href="{{ defense.teacher.get_absolute_url }}">{{ defense.full_name }}</a>{% else %}{{ defense.full_name }}{% endif %}</td>
+                    <td>{% if defense.teacher %}{% record_link defense.teacher defense.full_name %}{% else %}{{ defense.full_name }}{% endif %}</td>
                     <td>{{ defense.get_kind_display }}</td>
                     <td>{{ defense.title }}</td>
                     <td class="text-nowrap">{{ defense.defense_date|date:'d.m.Y' }}</td>
-                    <td>{% if defense.supervisor %}<a href="{{ defense.supervisor.get_absolute_url }}">{{ defense.supervisor }}</a>{% else %}—{% endif %}</td>
+                    <td>{% if defense.supervisor %}{% record_link defense.supervisor %}{% else %}—{% endif %}</td>
                     {% if can_change_defense or can_delete_defense %}
                         <td class="text-end text-nowrap d-print-none">
                             {% if can_change_defense %}<a href="{% url 'schools:defense_update' defense.pk %}" class="btn btn-outline-secondary btn-sm">Изменить</a>{% endif %}

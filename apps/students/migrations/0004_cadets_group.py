@@ -11,7 +11,7 @@ def codenames(app_label, models_actions):
 
 # Курсант ведёт своё портфолио: публикации, доклады и достижения, где указан сам, и работает со своими задачами.
 # Что именно «своё», проверяют код (apps/core/permissions.py, apps/adjuncts/access.py) и белый список страниц
-# курсанта (apps/students/cabinet.py): чужие данные курсанту недоступны даже для просмотра.
+# в личном кабинете (apps/core/cabinet.py): чужие данные курсанту недоступны даже для просмотра.
 PERMISSIONS = [
     *codenames('publications', {'publication': ALL_ACTIONS, 'publicationauthor': ALL_ACTIONS}),
     *codenames('conferences', {'conference': ['add', 'view'], 'report': ALL_ACTIONS, 'reportspeaker': ALL_ACTIONS}),

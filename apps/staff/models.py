@@ -85,6 +85,10 @@ class Teacher(ProtectedRelationsMixin, models.Model):
         if self.user_id:
             validate_free_account(self.user, 'teacher')
 
+    def is_authored_by(self, person):
+        """Своя карточка (используется личным кабинетом); преподаватель и адъюнкт с тем же pk — разные люди."""
+        return isinstance(person, Teacher) and person.pk == self.pk
+
     @property
     def full_name(self):
         return ' '.join(part for part in (self.last_name, self.first_name, self.middle_name) if part)

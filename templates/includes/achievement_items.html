@@ -1,4 +1,4 @@
-{# Достижения по годам. Параметры: achievements, can_change, can_delete, change_url, delete_url (имена маршрутов). #}
+{% load cabinet %}{# Достижения по годам. Параметры: achievements, can_change, can_delete, change_url, delete_url (имена маршрутов). #}
 {% regroup achievements by date.year as achievements_by_year %}
 {% for year_group in achievements_by_year %}
     <h3 class="h6 mt-3 text-muted">{{ year_group.grouper }}</h3>
@@ -11,7 +11,7 @@
                         <div class="small text-muted">
                             {{ achievement.get_kind_display|capfirst }}, {{ achievement.get_level_display }} уровень,
                             {{ achievement.date|date:'d.m.Y' }}{% if achievement.supervisor %}, руководитель
-                            {% if cabinet_student %}{{ achievement.supervisor }}{% else %}<a href="{{ achievement.supervisor.get_absolute_url }}">{{ achievement.supervisor }}</a>{% endif %}{% endif %}
+                            {% record_link achievement.supervisor %}{% endif %}
                         </div>
                         {% if achievement.document %}
                             <div class="small">

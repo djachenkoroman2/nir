@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load permissions %}
+{% load cabinet permissions %}
 
 {% block title %}{{ conference.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
 
@@ -54,7 +54,7 @@
                     {% endfor %}
                 </div>
                 {% if report.publication %}
-                    <div class="small text-muted">Опубликовано: <a href="{{ report.publication.get_absolute_url }}">{{ report.publication.title }}</a></div>
+                    <div class="small text-muted">Опубликовано: {% record_link report.publication report.publication.title %}</div>
                 {% endif %}
                 {% can user 'conferences.change_report' report as can_change_report %}{% can user 'conferences.delete_report' report as can_delete_report %}
                 {% if can_change_report or can_delete_report %}

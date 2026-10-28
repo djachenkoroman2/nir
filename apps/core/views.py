@@ -7,8 +7,9 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.adjuncts.models import Adjunct, PlanStage, Task
+from apps.adjuncts.models import Adjunct
 from apps.conferences.models import Conference, Report
+from apps.core.cabinet import get_cabinet_person
 from apps.core.permissions import can_manage, get_person, is_editor
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
@@ -20,9 +21,9 @@ from apps.students.models import Student, StudentAchievement
 
 @login_required
 def home(request):
-    person = get_person(request.user)
-    if isinstance(person, Student):
-        # Личный кабинет курсанта — его карточка с портфолио и задачами; разделы системы ему закрыты.
+    person = get_cabinet_person(request.user)
+    if person is not None:
+        # Личный кабинет преподавателя, адъюнкта или курсанта — его карточка; разделы системы ему закрыты.
         return redirect(person)
     year = timezone.localdate().year
     sections = [
@@ -62,15 +63,6 @@ def home(request):
         },
     ]
     context = {'sections': sections}
-    if isinstance(person, Adjunct):
-        # Личный кабинет адъюнкта: ближайшие этапы плана и открытые задачи.
-        context.update({
-            'my_adjunct': person,
-            'my_stages': person.plan_stages.filter(
-                status__in=[PlanStage.Status.PLANNED, PlanStage.Status.IN_PROGRESS]
-            ).order_by('due_date')[:5],
-            'my_tasks': person.tasks.filter(status__in=Task.OPEN_STATUSES)[:5],
-        })
     return render(request, 'core/home.html', context)
 
 

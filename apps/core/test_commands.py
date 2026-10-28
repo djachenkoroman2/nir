@@ -8,6 +8,7 @@ from django.test import TestCase, override_settings
 from apps.accounts.models import User
 from apps.adjuncts.models import Adjunct, Task, TaskComment
 from apps.core.management.commands._base import DOMAIN_MODELS
+from apps.core.permissions import get_person
 from apps.core.management.commands.seed_demo import DEMO_PASSWORD
 from apps.publications.models import Publication
 from apps.schools.indicators import indicator_totals
@@ -80,6 +81,18 @@ class SeedDemoTests(TestCase):
         self.assertEqual(set(tasks.filter(student__user__isnull=True).values_list('status', flat=True))
                          - set(Task.STUDENT_STATUSES), set())
         self.assertTrue(any(task.is_overdue for task in tasks))
+
+    def test_demo_cabinets_are_not_empty(self):
+        run('seed_demo')
+        for login in ('ivanov', 'petrova', 'smirnov', 'adjunct1', 'adjunct2'):
+            with self.subTest(login=login):
+                person = get_person(User.objects.get(username=login))
+                self.assertTrue(person.publicationauthor_set.exists())
+                self.assertTrue(person.reportspeaker_set.exists())
+        ivanov = User.objects.get(username='ivanov').teacher
+        self.assertTrue(ivanov.led_schools.exists())
+        self.assertTrue(ivanov.memberships.exists())
+        self.assertTrue(ivanov.supervised_students.exists() and ivanov.supervised_adjuncts.exists())
 
     def test_student_accounts_with_portfolio_and_tasks(self):
         run('seed_demo')

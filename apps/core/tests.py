@@ -62,16 +62,20 @@ class TeacherGroupTests(TestCase):
     def test_can_edit_and_delete_own_publication_only(self):
         self.assertEqual(self.client.get(reverse('publications:publication_update', args=[self.mine.pk])).status_code, 200)
         self.assertEqual(self.client.get(reverse('publications:publication_delete', args=[self.mine.pk])).status_code, 200)
-        self.assertEqual(self.client.get(reverse('publications:publication_update', args=[self.foreign.pk])).status_code, 403)
-        self.assertEqual(self.client.get(reverse('publications:publication_delete', args=[self.foreign.pk])).status_code, 403)
+        # Чужая публикация в личном кабинете не видна вовсе (404), а не только недоступна для изменения.
+        foreign_update = reverse('publications:publication_update', args=[self.foreign.pk])
+        foreign_delete = reverse('publications:publication_delete', args=[self.foreign.pk])
+        self.assertEqual(self.client.get(foreign_update).status_code, 404)
+        self.assertEqual(self.client.get(foreign_delete).status_code, 404)
 
     def test_edit_buttons_only_on_own_publication(self):
         mine = self.client.get(self.mine.get_absolute_url())
         self.assertContains(mine, reverse('publications:publication_update', args=[self.mine.pk]))
-        foreign = self.client.get(self.foreign.get_absolute_url())
-        self.assertNotContains(foreign, reverse('publications:publication_update', args=[self.foreign.pk]))
-        self.assertContains(self.client.get(reverse('publications:publication_list')),
-                            reverse('publications:publication_create'))
+        # Публикация коллеги, где я соавтор, видна; кнопки изменения — по существующим правам (они у соавтора есть).
+        PublicationAuthor.objects.create(publication=self.foreign, teacher=self.me, order=2)
+        self.assertContains(self.client.get(self.foreign.get_absolute_url()),
+                            reverse('publications:publication_update', args=[self.foreign.pk]))
+        self.assertContains(self.client.get(self.me.get_absolute_url()), reverse('publications:publication_create'))
 
     def test_create_form_is_prefilled_with_self(self):
         response = self.client.get(reverse('publications:publication_create'))
@@ -107,7 +111,7 @@ class TeacherGroupTests(TestCase):
     def test_reports(self):
         self.assertEqual(self.client.get(reverse('conferences:report_update', args=[self.my_report.pk])).status_code, 200)
         self.assertEqual(
-            self.client.get(reverse('conferences:report_update', args=[self.foreign_report.pk])).status_code, 403
+            self.client.get(reverse('conferences:report_update', args=[self.foreign_report.pk])).status_code, 404
         )
         self.assertEqual(
             self.client.get(reverse('conferences:report_create', args=[self.conference.pk])).status_code, 200

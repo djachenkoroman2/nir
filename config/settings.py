@@ -66,8 +66,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    # Курсант видит только свой личный кабинет и свои записи (белый список страниц).
-    'apps.students.cabinet.StudentCabinetMiddleware',
+    # Преподаватель, адъюнкт и курсант видят только свой кабинет и свои записи (белые списки страниц).
+    'apps.core.cabinet.CabinetMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -84,7 +84,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'apps.adjuncts.context_processors.task_menu',
-                'apps.students.cabinet.cabinet',
+                'apps.core.cabinet.cabinet',
             ],
         },
     },

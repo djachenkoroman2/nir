@@ -17,7 +17,7 @@ from apps.ip.models import IntellectualProperty, IntellectualPropertyAuthor
 from apps.publications.models import Publication, PublicationAuthor
 from apps.staff.tests import make_editor, make_teacher
 
-from .cabinet import ALLOWED_URLS
+from apps.core.cabinet import RULES, STUDENT
 from .models import StudentAchievement
 from .tests import make_achievement, make_student, make_teacher_user
 
@@ -118,7 +118,7 @@ class WhitelistTests(CabinetTestCase):
     def test_pages_not_in_whitelist_are_closed_by_default(self):
         names = set(named_urls_without_arguments())
         self.assertIn('staff:teacher_list', names)
-        for name in sorted(names - set(ALLOWED_URLS)):
+        for name in sorted(names - set(RULES[STUDENT])):
             with self.subTest(name=name):
                 self.assertEqual(self.get(name).status_code, 403)
 
@@ -138,8 +138,10 @@ class WhitelistTests(CabinetTestCase):
         # Руководитель — без ссылки на закрытую карточку преподавателя.
         self.assertNotContains(response, self.supervisor.get_absolute_url())
 
-    def test_other_users_are_not_restricted(self):
+    def test_supervisor_and_editor_see_student(self):
         self.client.force_login(make_teacher_user(self.supervisor))
+        self.assertEqual(self.get('students:student_detail', self.student.pk).status_code, 200)
+        self.client.force_login(make_editor())
         self.assertEqual(self.get('students:student_list').status_code, 200)
         self.assertEqual(self.get('students:student_detail', self.student.pk).status_code, 200)
 
@@ -276,7 +278,7 @@ class CabinetTaskTests(CabinetTestCase):
         Task.objects.create(student=self.student, title='Просроченная', status=Task.Status.IN_PROGRESS,
                             due_date=timezone.localdate() - datetime.timedelta(days=3))
         self.client.force_login(supervisor_user)
-        self.assertEqual(self.client.get('/').context['task_menu']['attention'], 1)
+        self.assertEqual(self.client.get('/', follow=True).context['task_menu']['attention'], 1)
 
     def test_supervisor_and_editor_still_manage(self):
         for user in (make_teacher_user(self.supervisor), make_editor()):

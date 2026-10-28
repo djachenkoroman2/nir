@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load permissions %}
+{% load cabinet permissions %}
 
 {% block title %}{{ publication.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
 
@@ -42,14 +42,14 @@
             <dt class="col-sm-4">Индексирование</dt>
             <dd class="col-sm-8">{% if publication.indexing %}{% include 'includes/indexing_badges.html' %}{% else %}—{% endif %}</dd>
             <dt class="col-sm-4">Научные школы</dt>
-            <dd class="col-sm-8">{% for school in publication.schools.all %}{% if cabinet_student %}{{ school }}{% else %}<a href="{{ school.get_absolute_url }}">{{ school }}</a>{% endif %}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+            <dd class="col-sm-8">{% for school in publication.schools.all %}{% record_link school %}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
             <dt class="col-sm-4">НИОКР</dt>
-            <dd class="col-sm-8">{% if publication.project %}{% if cabinet_student %}{{ publication.project }}{% else %}<a href="{{ publication.project.get_absolute_url }}">{{ publication.project }}</a>{% endif %}{% else %}—{% endif %}</dd>
+            <dd class="col-sm-8">{% if publication.project %}{% record_link publication.project %}{% else %}—{% endif %}</dd>
             {% if publication.report %}
                 <dt class="col-sm-4">Доклад</dt>
                 <dd class="col-sm-8 mb-0">
                     «{{ publication.report.title }}» на конференции
-                    <a href="{{ publication.report.conference.get_absolute_url }}">{{ publication.report.conference }}</a>
+                    {% record_link publication.report.conference %}
                 </dd>
             {% endif %}
         </dl>

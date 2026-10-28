@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load permissions %}
+{% load cabinet permissions %}
 
 {% block title %}{{ student.short_name }} — {{ block.super }}{% endblock %}
 
@@ -38,7 +38,7 @@
             <dt class="col-sm-4">Учебная группа</dt><dd class="col-sm-8">{{ student.group }}</dd>
             <dt class="col-sm-4">Курс</dt><dd class="col-sm-8">{{ student.course }}</dd>
             <dt class="col-sm-4">Научный руководитель</dt>
-            <dd class="col-sm-8">{% if not student.supervisor %}—{% elif cabinet_student %}{{ student.supervisor.full_name }}{% else %}<a href="{{ student.supervisor.get_absolute_url }}">{{ student.supervisor.full_name }}</a>{% endif %}</dd>
+            <dd class="col-sm-8">{% if student.supervisor %}{% record_link student.supervisor student.supervisor.full_name %}{% else %}—{% endif %}</dd>
             {% if student.note %}
                 <dt class="col-sm-4">Примечание</dt><dd class="col-sm-8 mb-0">{{ student.note|linebreaksbr }}</dd>
             {% endif %}

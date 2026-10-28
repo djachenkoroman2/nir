@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load permissions %}
+{% load cabinet permissions %}
 
 {% block title %}{{ intellectualproperty.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
 
@@ -40,9 +40,9 @@
                 <dt class="col-sm-4">Ссылка</dt><dd class="col-sm-8 text-break"><a href="{{ intellectualproperty.url }}" target="_blank" rel="noopener">{{ intellectualproperty.url }}</a></dd>
             {% endif %}
             <dt class="col-sm-4">Научные школы</dt>
-            <dd class="col-sm-8">{% for school in intellectualproperty.schools.all %}{% if cabinet_student %}{{ school }}{% else %}<a href="{{ school.get_absolute_url }}">{{ school }}</a>{% endif %}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
+            <dd class="col-sm-8">{% for school in intellectualproperty.schools.all %}{% record_link school %}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</dd>
             <dt class="col-sm-4">НИОКР</dt>
-            <dd class="col-sm-8 mb-0">{% if intellectualproperty.project %}{% if cabinet_student %}{{ intellectualproperty.project }}{% else %}<a href="{{ intellectualproperty.project.get_absolute_url }}">{{ intellectualproperty.project }}</a>{% endif %}{% else %}—{% endif %}</dd>
+            <dd class="col-sm-8 mb-0">{% if intellectualproperty.project %}{% record_link intellectualproperty.project %}{% else %}—{% endif %}</dd>
         </dl>
     </div>
 </div>

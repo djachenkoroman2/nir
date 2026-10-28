@@ -303,6 +303,7 @@ class DemoData:
         self.create_conferences()
         self.create_defenses()
         self.create_student_tasks()
+        self.fill_demo_cabinets()
 
     def create_teachers(self):
         self.teachers = []
@@ -682,3 +683,17 @@ class DemoData:
                     title=self.rnd.choice(ACHIEVEMENT_TITLES[kind]), result=self.rnd.choice(ACHIEVEMENT_RESULTS),
                     date=self.date_in(self.today.year), supervisor=ivanov,
                 ))
+
+    def fill_demo_cabinets(self):
+        """У каждого демо-пользователя в кабинете есть хотя бы одна публикация и один доклад."""
+        people = [*self.demo_teachers, *(adjunct for adjunct in self.adjuncts if adjunct.user_id)]
+        publications = list(Publication.objects.order_by('pk'))
+        reports = list(Report.objects.order_by('pk'))
+        for person in people:
+            lookup = author_lookup(person)
+            if not PublicationAuthor.objects.filter(**lookup).exists():
+                publication = self.rnd.choice(publications)
+                save(PublicationAuthor(publication=publication, order=publication.authors.count() + 1, **lookup))
+            if not ReportSpeaker.objects.filter(**lookup).exists():
+                report = self.rnd.choice(reports)
+                save(ReportSpeaker(report=report, order=report.speakers.count() + 1, **lookup))

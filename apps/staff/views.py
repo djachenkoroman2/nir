@@ -8,6 +8,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from apps.adjuncts.access import is_task_editor
 from apps.adjuncts.models import Adjunct, Task
 from apps.conferences.models import Report
+from apps.core.cabinet import get_cabinet_person
 from apps.core.permissions import get_teacher
 from apps.core.search import search
 from apps.ip.models import IntellectualProperty
@@ -74,6 +75,8 @@ class TeacherDetailView(LoginRequiredMixin, DetailView):
         # видят сам руководитель и редакторы.
         user = self.request.user
         context['show_review_counts'] = is_task_editor(user) or get_teacher(user) == teacher
+        # Преподаватель смотрит свою карточку — это его личный кабинет.
+        context['is_cabinet'] = teacher.is_authored_by(get_cabinet_person(user))
         return context
 
 

@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
+{% load cabinet %}
 
 {% block title %}{{ researchproject.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'research:project_list' %}">НИОКР</a></li>
+        {% url 'research:project_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='НИОКР' %}
         <li class="breadcrumb-item active" aria-current="page">{{ researchproject.title|truncatechars:60 }}</li>
     </ol>
 </nav>
@@ -37,7 +38,7 @@
         {% for membership in memberships %}
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>
-                    <a href="{{ membership.teacher.get_absolute_url }}">{{ membership.teacher.full_name }}</a>
+                    {% record_link membership.teacher membership.teacher.full_name %}
                     <span class="text-muted small">, {{ membership.teacher.get_position_display }}</span>
                 </span>
                 <span class="badge {% if membership.role == membership.Role.LEADER %}text-bg-primary{% else %}text-bg-light{% endif %}">{{ membership.get_role_display }}</span>
@@ -54,14 +55,14 @@
         {% for publication in researchproject.publications.all %}
             <li class="list-group-item">
                 <span class="badge text-bg-light border me-1">{{ publication.get_kind_display }}</span>
-                <a href="{{ publication.get_absolute_url }}">{{ publication.title }}</a>
+                {% record_link publication publication.title %}
                 <span class="small text-muted">({{ publication.year }})</span>
             </li>
         {% endfor %}
         {% for item in researchproject.intellectual_properties.all %}
             <li class="list-group-item">
                 <span class="badge text-bg-light border me-1">{{ item.get_kind_display }}</span>
-                <a href="{{ item.get_absolute_url }}">{{ item.title }}</a>
+                {% record_link item item.title %}
                 <span class="small text-muted">(№ {{ item.number }})</span>
             </li>
         {% endfor %}

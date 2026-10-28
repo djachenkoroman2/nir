@@ -103,8 +103,8 @@ class ReportConferenceChoiceView(RecordPermissionRequiredMixin, FormView):
 
 class ReportFormKwargsMixin:
     def get_form_kwargs(self):
-        # Курсанту в кабинете чужие данные закрыты — в выборе публикации только его собственные.
-        return {**super().get_form_kwargs(), 'own_publications_of': getattr(self.request, 'cabinet_student', None)}
+        # В личном кабинете чужие данные закрыты — в выборе публикации только собственные.
+        return {**super().get_form_kwargs(), 'own_publications_of': getattr(self.request, 'cabinet_person', None)}
 
 
 class ReportCreateView(ReportFormKwargsMixin, RecordPermissionRequiredMixin, AuthorFormSetMixin, CreateView):

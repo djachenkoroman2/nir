@@ -1,10 +1,10 @@
-{# Список публикаций карточки школы. Параметры: items, anchor, title. #}
+{% load cabinet %}{# Список публикаций карточки школы. Параметры: items, anchor, title. #}
 <h2 class="h5 mt-4" id="{{ anchor }}">{{ title }} <span class="text-muted fw-normal">({{ items|length }})</span></h2>
 <div class="card shadow-sm">
     <ul class="list-group list-group-flush">
         {% for publication in items %}
             <li class="list-group-item">
-                <a href="{{ publication.get_absolute_url }}">{{ publication.title }}</a>
+                {% record_link publication publication.title %}
                 <div class="small text-muted">{{ publication.authors_display }}. {{ publication.imprint }}</div>
             </li>
         {% empty %}

@@ -17,9 +17,12 @@
             </button>
             <div class="collapse navbar-collapse" id="mainNav">
                 <ul class="navbar-nav me-auto">
-                    {% if cabinet_student %}
-                        {# Курсанту разделы системы закрыты: только его кабинет и задачи. #}
-                        <li class="nav-item"><a class="nav-link{% if request.path == cabinet_student.get_absolute_url %} active{% endif %}" href="{% url 'core:home' %}">Мой кабинет</a></li>
+                    {% if cabinet_person %}
+                        {# В личном кабинете разделы системы закрыты: только свой кабинет, подопечные и задачи. #}
+                        <li class="nav-item"><a class="nav-link{% if request.path == cabinet_person.get_absolute_url %} active{% endif %}" href="{% url 'core:home' %}">Мой кабинет</a></li>
+                        {% if cabinet_role == 'teacher' %}
+                            <li class="nav-item"><a class="nav-link" href="{{ cabinet_person.get_absolute_url }}#supervision">Мои подопечные</a></li>
+                        {% endif %}
                     {% else %}
                     {% url 'staff:teacher_list' as teachers_url %}
                     {% url 'research:project_list' as research_url %}

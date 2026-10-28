@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load permissions %}
+{% load cabinet permissions %}
 
 {% block title %}{{ scientificschool.name|truncatechars:60 }} — {{ block.super }}{% endblock %}
 
@@ -7,7 +7,7 @@
 {% with school=scientificschool %}
 <nav aria-label="breadcrumb" class="d-print-none">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'schools:school_list' %}">Научные школы</a></li>
+        {% url 'schools:school_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='Научные школы' %}
         <li class="breadcrumb-item active" aria-current="page">{{ school.name|truncatechars:60 }}</li>
     </ol>
 </nav>
@@ -33,7 +33,7 @@
             <dt class="col-sm-4">Ведущие учёные кафедры</dt>
             <dd class="col-sm-8 mb-0">
                 {% for leader in school.leaders.all %}
-                    <a href="{{ leader.get_absolute_url }}">{{ leader.full_name }}</a>{% if leader.degree != 'none' %}, {{ leader.get_degree_display }}{% endif %}{% if not forloop.last %}<br>{% endif %}
+                    {% record_link leader leader.full_name %}{% if leader.degree != 'none' %}, {{ leader.get_degree_display }}{% endif %}{% if not forloop.last %}<br>{% endif %}
                 {% empty %}—{% endfor %}
             </dd>
         </dl>
@@ -71,7 +71,7 @@
     <ul class="list-group list-group-flush">
         {% for item in intellectual_properties %}
             <li class="list-group-item">
-                <a href="{{ item.get_absolute_url }}">{{ item.title }}</a>
+                {% record_link item item.title %}
                 <div class="small text-muted">{{ item.get_kind_display|capfirst }} № {{ item.number }} от {{ item.registration_date|date:'d.m.Y' }}. {{ item.authors_display }}</div>
             </li>
         {% empty %}

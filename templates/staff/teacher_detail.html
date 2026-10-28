@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
+{% load cabinet %}
 
 {% block title %}{{ teacher.short_name }} — {{ block.super }}{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'staff:teacher_list' %}">Преподаватели</a></li>
+        {% url 'staff:teacher_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='Преподаватели' %}
         <li class="breadcrumb-item active" aria-current="page">{{ teacher.short_name }}</li>
     </ol>
 </nav>
@@ -15,6 +16,14 @@
         {{ teacher.full_name }}
         {% if not teacher.is_active %}<span class="badge text-bg-secondary fs-6 align-middle">не работает на кафедре</span>{% endif %}
     </h1>
+    {% if is_cabinet %}
+        <div class="d-flex flex-wrap gap-2">
+            {% if task_menu.attention %}<a href="{% url 'tasks:my_tasks' %}" class="btn btn-warning">Ждут внимания: {{ task_menu.attention }}</a>{% endif %}
+            <a href="{% url 'publications:publication_create' %}" class="btn btn-outline-primary">Добавить публикацию</a>
+            <a href="{% url 'ip:ip_create' %}" class="btn btn-outline-primary">Добавить РИД</a>
+            <a href="{% url 'conferences:report_choose' %}" class="btn btn-outline-primary">Добавить доклад</a>
+        </div>
+    {% endif %}
     {% if user.is_staff %}
         <div class="d-flex gap-2">
             {% if perms.staff.change_teacher %}<a href="{% url 'staff:teacher_update' teacher.pk %}" class="btn btn-outline-primary">Изменить</a>{% endif %}
@@ -34,7 +43,7 @@
             <dt class="col-sm-4">Телефон</dt><dd class="col-sm-8">{{ teacher.phone|default:'—' }}</dd>
             {% if teacher.led_schools.exists %}
                 <dt class="col-sm-4">Ведущий учёный научных школ</dt>
-                <dd class="col-sm-8">{% for school in teacher.led_schools.all %}<a href="{{ school.get_absolute_url }}">{{ school }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</dd>
+                <dd class="col-sm-8">{% for school in teacher.led_schools.all %}{% record_link school %}{% if not forloop.last %}, {% endif %}{% endfor %}</dd>
             {% endif %}
             {% if user.is_staff %}
                 <dt class="col-sm-4">Учётная запись</dt><dd class="col-sm-8 mb-0">{{ teacher.user.username|default:'—' }}</dd>
@@ -115,7 +124,7 @@
     </ul>
 </div>
 
-<h2 class="h5 mt-4">Научное руководство курсантами <span class="text-muted fw-normal">({{ supervised_students|length }})</span></h2>
+<h2 class="h5 mt-4" id="supervision">Научное руководство курсантами <span class="text-muted fw-normal">({{ supervised_students|length }})</span></h2>
 <div class="card shadow-sm">
     <div class="table-responsive">
         <table class="table align-middle mb-0">
@@ -152,7 +161,7 @@
                 <li class="list-group-item">
                     {{ achievement.title }} — {{ achievement.result }}
                     <div class="small text-muted">
-                        <a href="{{ achievement.student.get_absolute_url }}">{{ achievement.student }}</a>,
+                        {% record_link achievement.student %},
                         {{ achievement.get_kind_display }}, {{ achievement.get_level_display }} уровень,
                         {{ achievement.date|date:'d.m.Y' }}
                     </div>

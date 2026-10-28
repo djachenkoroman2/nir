@@ -157,7 +157,7 @@ class AdjunctAsAuthorTests(TestCase):
         PublicationAuthor.objects.create(publication=foreign, teacher=self.supervisor)
         self.assertEqual(self.client.get(reverse('publications:publication_update', args=[mine.pk])).status_code, 200)
         self.assertEqual(self.client.get(reverse('publications:publication_update', args=[foreign.pk])).status_code,
-                         403)
+                         404)
 
     def test_teacher_with_same_pk_does_not_get_adjunct_records(self):
         # У преподавателя и адъюнкта могут совпасть первичные ключи: права не должны путаться.
@@ -189,7 +189,7 @@ class AdjunctCardPermissionTests(TestCase):
 
     def test_other_teacher_cannot_edit(self):
         self.client.force_login(make_teacher_user(self.other))
-        self.assertEqual(self.client.get(self.update_url).status_code, 403)
+        self.assertEqual(self.client.get(self.update_url).status_code, 404)  # чужой адъюнкт в кабинете не виден
 
     def test_adjunct_changes_only_own_contacts(self):
         self.client.force_login(make_adjunct_user(self.adjunct))
@@ -203,7 +203,7 @@ class AdjunctCardPermissionTests(TestCase):
         self.assertEqual(self.adjunct.dissertation_topic, 'Методы защиты информации')
 
         someone = make_adjunct(self.supervisor, last_name='Сосед')
-        self.assertEqual(self.client.get(reverse('adjuncts:adjunct_contacts', args=[someone.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse('adjuncts:adjunct_contacts', args=[someone.pk])).status_code, 404)
 
     def test_adjunct_cannot_be_deleted_with_publications_or_defense(self):
         self.client.force_login(make_editor())
@@ -288,9 +288,10 @@ class TaskVisibilityTests(TestCase):
             self.client.force_login(user)
             for url in self.urls:
                 with self.subTest(user=user.username, url=url):
-                    self.assertEqual(self.client.get(url).status_code, 404)
-            card = self.client.get(self.adjunct.get_absolute_url())
-            self.assertNotContains(card, 'Секретная задача')
+                    # 404 — запись не видна; 403 — страницы нет в белом списке роли (адъюнкт не ставит задачи).
+                    self.assertIn(self.client.get(url).status_code, (403, 404))
+            # Карточка чужого адъюнкта в личном кабинете не видна вовсе.
+            self.assertEqual(self.client.get(self.adjunct.get_absolute_url()).status_code, 404)
             self.assertNotContains(self.client.get(reverse('tasks:my_tasks')), 'Секретная задача')
 
     def test_visible_to_adjunct_supervisor_editor(self):
@@ -431,20 +432,21 @@ class MenuAndCabinetTests(TestCase):
 
     def test_counter_in_header(self):
         self.client.force_login(self.adjunct_user)
-        self.assertEqual(self.client.get('/').context['task_menu']['attention'], 2)
+        self.assertEqual(self.client.get('/', follow=True).context['task_menu']['attention'], 2)
         self.client.force_login(self.supervisor_user)
-        self.assertEqual(self.client.get('/').context['task_menu']['attention'], 1)
+        self.assertEqual(self.client.get('/', follow=True).context['task_menu']['attention'], 1)
         self.client.force_login(User.objects.create_user(username='reader'))
-        self.assertFalse(self.client.get('/').context['task_menu']['show'])
+        self.assertFalse(self.client.get('/', follow=True).context['task_menu']['show'])
 
-    def test_adjunct_cabinet_on_home_page(self):
+    def test_adjunct_cabinet_is_own_card(self):
         PlanStage.objects.create(adjunct=self.adjunct, study_year=1, title='Ближайший этап', kind='exam',
                                  due_date=timezone.localdate() + datetime.timedelta(days=10))
         self.client.force_login(self.adjunct_user)
-        response = self.client.get('/')
+        self.assertRedirects(self.client.get('/'), self.adjunct.get_absolute_url())
+        response = self.client.get(self.adjunct.get_absolute_url())
         self.assertContains(response, 'Ближайший этап')
         self.assertContains(response, 'Новая 1')
-        self.assertContains(response, 'Моя карточка адъюнкта')
+        self.assertContains(response, 'Добавить публикацию')
 
     def test_teacher_card_shows_review_count_only_to_supervisor(self):
         self.client.force_login(self.supervisor_user)
@@ -554,10 +556,10 @@ class StudentTaskVisibilityTests(TestCase):
             self.client.force_login(user)
             for url in self.urls:
                 with self.subTest(user=user.username, url=url):
-                    self.assertEqual(self.client.get(url).status_code, 404)
-            card = self.client.get(self.student.get_absolute_url())
-            self.assertNotContains(card, 'Задача курсанта')
-            self.assertFalse(card.context['show_tasks'])
+                    # 404 — запись не видна; 403 — страницы нет в белом списке роли (адъюнкт не ставит задачи).
+                    self.assertIn(self.client.get(url).status_code, (403, 404))
+            # Карточка чужого курсанта в личном кабинете не видна вовсе.
+            self.assertIn(self.client.get(self.student.get_absolute_url()).status_code, (403, 404))
             self.assertNotContains(self.client.get(reverse('tasks:my_tasks')), 'Задача курсанта')
 
     def test_supervisor_and_editor_see_and_manage(self):
@@ -661,7 +663,7 @@ class MixedTasksTests(TestCase):
         Task.objects.create(student=self.student, title='Выполненная просроченная', due_date=self.yesterday,
                             status=Task.Status.DONE)
         self.client.force_login(self.supervisor_user)
-        menu = self.client.get('/').context['task_menu']
+        menu = self.client.get('/', follow=True).context['task_menu']
         self.assertEqual(menu['attention'], 2)
         self.assertIn('курсантов', menu['title'])
 
@@ -669,13 +671,15 @@ class MixedTasksTests(TestCase):
         teacher = make_teacher(last_name='Безадъюнктов')
         make_student(supervisor=teacher, last_name='Подопечный')
         self.client.force_login(make_teacher_user(teacher, 'only_students'))
-        self.assertTrue(self.client.get('/').context['task_menu']['show'])
+        self.assertTrue(self.client.get('/', follow=True).context['task_menu']['show'])
 
     def test_student_list_and_teacher_card_show_open_tasks_to_supervisor_only(self):
-        self.client.force_login(self.supervisor_user)
+        # Список курсантов в личном кабинете закрыт — число задач в нём видит редактор.
+        self.client.force_login(make_editor())
         response = self.client.get(reverse('students:student_list'))
         row = response.context['student_list'][0]
         self.assertEqual((row.open_task_count, row.show_tasks), (2, True))
+        self.client.force_login(self.supervisor_user)
         card = self.client.get(self.supervisor.get_absolute_url())
         self.assertEqual(card.context['supervised_students'][0].open_task_count, 2)
         self.client.force_login(User.objects.create_user(username='reader'))
@@ -709,7 +713,8 @@ class MixedQueryCountTests(TestCase):
         return len(queries)
 
     def test_lists_do_not_query_per_row(self):
-        for url in (reverse('students:student_list'), reverse('tasks:my_tasks')):
+        # Кабинет руководителя (его карточка с подопечными) и «Мои задачи».
+        for url in (self.supervisor.get_absolute_url(), reverse('tasks:my_tasks')):
             with self.subTest(url=url):
                 self.add_rows(2)
                 few = self.count_queries(url)

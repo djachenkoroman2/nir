@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% load permissions %}
+{% load cabinet permissions %}
 
 {% block title %}{{ adjunct.short_name }} — {{ block.super }}{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'adjuncts:adjunct_list' %}">Адъюнктура</a></li>
+        {% url 'adjuncts:adjunct_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='Адъюнктура' %}
         <li class="breadcrumb-item active" aria-current="page">{{ adjunct.short_name }}</li>
     </ol>
 </nav>
@@ -17,7 +17,13 @@
         <span class="badge {{ adjunct.status_badge }} fs-6 align-middle">{{ adjunct.get_status_display }}</span>
     </h1>
     {% can user 'adjuncts.change_adjunct' adjunct as can_change %}{% can user 'adjuncts.delete_adjunct' adjunct as can_delete %}
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
+        {% if is_own_card %}
+            <a href="{% url 'publications:publication_create' %}" class="btn btn-outline-primary">Добавить публикацию</a>
+            <a href="{% url 'ip:ip_create' %}" class="btn btn-outline-primary">Добавить РИД</a>
+            <a href="{% url 'conferences:report_choose' %}" class="btn btn-outline-primary">Добавить доклад</a>
+            <a href="{% url 'adjuncts:achievement_create' adjunct.pk %}" class="btn btn-outline-primary">Добавить достижение</a>
+        {% endif %}
         {% if can_change %}<a href="{% url 'adjuncts:adjunct_update' adjunct.pk %}" class="btn btn-outline-primary">Изменить</a>
         {% elif is_own_card %}<a href="{% url 'adjuncts:adjunct_contacts' adjunct.pk %}" class="btn btn-outline-primary">Изменить контакты</a>{% endif %}
         {% if can_delete %}<a href="{% url 'adjuncts:adjunct_delete' adjunct.pk %}" class="btn btn-outline-danger">Удалить</a>{% endif %}
@@ -37,9 +43,9 @@
             <dt class="col-sm-4">Тема диссертации</dt><dd class="col-sm-8">{{ adjunct.dissertation_topic }}</dd>
             <dt class="col-sm-4">Научная специальность</dt><dd class="col-sm-8">{{ adjunct.specialty }}</dd>
             <dt class="col-sm-4">Научный руководитель</dt>
-            <dd class="col-sm-8"><a href="{{ adjunct.supervisor.get_absolute_url }}">{{ adjunct.supervisor.full_name }}</a></dd>
+            <dd class="col-sm-8">{% record_link adjunct.supervisor adjunct.supervisor.full_name %}</dd>
             <dt class="col-sm-4">Научная школа</dt>
-            <dd class="col-sm-8">{% if adjunct.school %}<a href="{{ adjunct.school.get_absolute_url }}">{{ adjunct.school }}</a>{% else %}—{% endif %}</dd>
+            <dd class="col-sm-8">{% if adjunct.school %}{% record_link adjunct.school %}{% else %}—{% endif %}</dd>
             <dt class="col-sm-4">Год поступления</dt><dd class="col-sm-8">{{ adjunct.admission_year }}</dd>
             <dt class="col-sm-4">Курс</dt><dd class="col-sm-8">{% include 'adjuncts/includes/course.html' %}</dd>
             <dt class="col-sm-4">Форма обучения, срок</dt>
@@ -47,7 +53,7 @@
             <dt class="col-sm-4">Планируемый год защиты</dt><dd class="col-sm-8">{{ adjunct.planned_defense_year|default:'—' }}</dd>
             {% for defense in defenses %}
                 <dt class="col-sm-4">Защита диссертации</dt>
-                <dd class="col-sm-8">{{ defense.get_kind_display|capfirst }}, {{ defense.defense_date|date:'d.m.Y' }}, <a href="{{ defense.school.get_absolute_url }}">{{ defense.school }}</a></dd>
+                <dd class="col-sm-8">{{ defense.get_kind_display|capfirst }}, {{ defense.defense_date|date:'d.m.Y' }}, {% record_link defense.school %}</dd>
             {% endfor %}
             <dt class="col-sm-4">E-mail</dt>
             <dd class="col-sm-8">{% if adjunct.email %}<a href="mailto:{{ adjunct.email }}">{{ adjunct.email }}</a>{% else %}—{% endif %}</dd>

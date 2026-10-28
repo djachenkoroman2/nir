@@ -5,7 +5,7 @@
 {% block content %}
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'students:student_list' %}">Курсанты</a></li>
+        {% url 'students:student_list' as section_list_url %}{% include 'includes/section_crumb.html' with url=section_list_url title='Курсанты' %}
         {% if object %}<li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object.short_name }}</a></li>{% endif %}
         <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение{% else %}Добавление{% endif %}</li>
     </ol>
@@ -30,7 +30,7 @@
             {% include 'includes/form_field.html' with field=form.note %}
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary">Сохранить</button>
-                <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'students:student_list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
+                <a href="{% if object %}{{ object.get_absolute_url }}{% elif cabinet_person %}{% url 'core:home' %}{% else %}{% url 'students:student_list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
             </div>
         </form>
     </div>

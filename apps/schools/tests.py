@@ -157,14 +157,17 @@ class SchoolAccessTests(TestCase):
         teacher_user = User.objects.create_user(username='teacher', password='secret')
         teacher_user.groups.add(Group.objects.get(name='Преподаватели'))
         make_teacher(last_name='Смирнов', user=teacher_user)
-        for user in (reader, teacher_user):
-            self.client.force_login(user)
-            with self.subTest(user=user.username):
-                response = self.client.get(reverse('schools:school_list'))
-                self.assertContains(response, 'Анализ данных')
-                self.assertNotContains(response, reverse('schools:school_create'))
-                for url in self.edit_urls():
-                    self.assertEqual(self.client.get(url).status_code, 403, url)
+        self.client.force_login(reader)
+        response = self.client.get(reverse('schools:school_list'))
+        self.assertContains(response, 'Анализ данных')
+        self.assertNotContains(response, reverse('schools:school_create'))
+        for url in self.edit_urls():
+            self.assertEqual(self.client.get(url).status_code, 403, url)
+        # Преподаватель в личном кабинете сводную таблицу не видит; изменить школы и защиты не может.
+        self.client.force_login(teacher_user)
+        self.assertEqual(self.client.get(reverse('schools:school_list')).status_code, 403)
+        for url in self.edit_urls():
+            self.assertIn(self.client.get(url).status_code, (403, 404), url)
 
     def test_editor_creates_school_and_defense(self):
         self.client.force_login(make_editor())

@@ -300,11 +300,15 @@ class PermissionTests(TestCase):
         self.assertTrue(self.student.achievements.filter(title='Конкурс').exists())
 
     def test_other_teacher_only_views(self):
+        # Чужой подопечный в личном кабинете не виден вовсе: и карточка, и страницы изменения — 404.
         self.client.force_login(make_teacher_user(self.other))
-        self.assertEqual(set(self.statuses().values()), {403})
-        self.assertEqual(self.client.get(self.student.get_absolute_url()).status_code, 200)
+        statuses = self.statuses()
+        # Добавлять и удалять курсантов преподаватель не может: этих страниц нет в его белом списке.
+        self.assertEqual((statuses.pop('create'), statuses.pop('delete')), (403, 403))
+        self.assertEqual(set(statuses.values()), {404})
+        self.assertEqual(self.client.get(self.student.get_absolute_url()).status_code, 404)
         response = self.client.post(self.urls['achievement_delete'])
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
         self.assertTrue(StudentAchievement.objects.filter(pk=self.achievement.pk).exists())
 
     def test_teacher_can_add_student_as_coauthor(self):
