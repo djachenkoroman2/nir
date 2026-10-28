@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Активность пользователей — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="d-print-none">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'reports:report_list' %}">Отчёты</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Активность пользователей</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Активность пользователей</h1>
+    {% if report %}
+        <div class="d-flex gap-2 d-print-none">
+            <a href="{% querystring format='docx' %}" class="btn btn-primary">Скачать DOCX</a>
+            <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Печать</button>
+        </div>
+    {% endif %}
+</div>
+
+<form method="get" class="card shadow-sm mb-3 d-print-none" novalidate>
+    <div class="card-body">
+        <input type="hidden" name="submitted" value="1">
+        {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+        <div class="row g-3">
+            <div class="col-md-3">{% include 'includes/form_field.html' with field=form.start %}</div>
+            <div class="col-md-3">{% include 'includes/form_field.html' with field=form.end %}</div>
+            <div class="col-md-6">{% include 'includes/form_field.html' with field=form.categories %}</div>
+        </div>
+        {% include 'includes/form_field.html' with field=form.show_inactive %}
+        <button type="submit" class="btn btn-outline-primary">Сформировать</button>
+    </div>
+</form>
+
+{% if report %}
+    <p class="text-muted">Период: с {{ report.start|date:'d.m.Y H:i' }} по {{ report.end|date:'d.m.Y H:i' }}.</p>
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle small mb-0">
+                <thead class="table-light text-center">
+                <tr>
+                    <th>Пользователь</th>
+                    {% for action, title in counters %}<th>{{ title }}</th>{% endfor %}
+                    <th>Первая активность</th><th>Последняя активность</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for category in report.categories %}
+                    <tr class="table-secondary"><th colspan="{{ counters|length|add:3 }}">{{ category.title }}</th></tr>
+                    {% for row in category.rows %}
+                        <tr>
+                            <td>
+                                {% if row.user_id %}
+                                    <a href="{% url 'reports:activity_user' row.user_id %}?start={{ period.start|urlencode }}&end={{ period.end|urlencode }}">{{ row.username }}</a>
+                                {% else %}
+                                    <a href="{% url 'reports:activity_name' row.username %}?start={{ period.start|urlencode }}&end={{ period.end|urlencode }}">{{ row.username }}</a>
+                                {% endif %}
+                                {% if row.full_name %}<div class="text-muted">{{ row.full_name }}</div>{% endif %}
+                            </td>
+                            {% for value in row.values %}<td class="text-center">{{ value }}</td>{% endfor %}
+                            <td class="text-nowrap">{{ row.first|date:'d.m.Y H:i'|default:'—' }}</td>
+                            <td class="text-nowrap">{{ row.last|date:'d.m.Y H:i'|default:'—' }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="{{ counters|length|add:3 }}" class="text-center text-muted">нет активности</td></tr>
+                    {% endfor %}
+                    {% if category.rows %}
+                        <tr class="fw-semibold">
+                            <td>Итого: {{ category.title|lower }}</td>
+                            {% for value in category.totals %}<td class="text-center">{{ value }}</td>{% endfor %}
+                            <td colspan="2"></td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+                <tr class="fw-bold table-light">
+                    <td>Всего</td>
+                    {% for value in report.totals %}<td class="text-center">{{ value }}</td>{% endfor %}
+                    <td colspan="2"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

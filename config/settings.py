@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'apps.students',
     'apps.adjuncts',
     'apps.reports',
+    'apps.activity',
 ]
 
 MIDDLEWARE = [
@@ -69,6 +70,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     # Преподаватель, адъюнкт и курсант видят только свой кабинет и свои записи (белые списки страниц).
     'apps.core.cabinet.CabinetMiddleware',
+    # Журнал активности: просмотры страниц, выгрузки отчётов; передаёт запрос сигналам изменения данных.
+    'apps.activity.middleware.ActivityMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -162,3 +165,10 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Журнал активности пользователей (apps.activity).
+# Срок хранения записей в днях: старые удаляет команда purge_activity_log.
+ACTIVITY_LOG_DAYS = int(os.environ.get('ACTIVITY_LOG_DAYS', '365'))
+# True — брать IP клиента из заголовка X-Real-IP / X-Forwarded-For (только за своим прокси, например Nginx;
+# без прокси заголовок может подделать любой клиент).
+ACTIVITY_TRUST_PROXY_HEADER = env_bool('ACTIVITY_TRUST_PROXY_HEADER', False)

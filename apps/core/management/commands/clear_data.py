@@ -1,6 +1,7 @@
 from django.db import transaction
 
 from apps.accounts.models import User
+from apps.activity.models import ActivityLog
 
 from ._base import DOMAIN_MODELS, DevOnlyCommand, domain_counts
 
@@ -13,6 +14,9 @@ def clear_data(keep_username):
             count = model.objects.count()
             model.objects.all().delete()
             deleted.append((model._meta.verbose_name_plural, count))
+        # Журнал активности не предметные данные, но без пользователей бессмысленен — очищается целиком.
+        deleted.append((ActivityLog._meta.verbose_name_plural, ActivityLog.objects.count()))
+        ActivityLog.objects.all().delete()
         users = User.objects.exclude(username=keep_username)
         deleted.append((User._meta.verbose_name_plural, users.count()))
         users.delete()

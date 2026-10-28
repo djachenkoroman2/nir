@@ -40,6 +40,15 @@ REPORTS = [
         url_name='reports:form16_own',
         is_available=has_works,
     ),
+    ReportType(
+        slug='activity',
+        title='Активность пользователей',
+        description='Входы, просмотры страниц, добавление, изменение и удаление записей, выгрузки отчётов '
+                    'по пользователям и категориям за выбранный период; выгрузка в DOCX.',
+        url_name='reports:activity',
+        # Только администратору и тем, кому право выдано вручную: журнал содержит персональные данные.
+        is_available=lambda user: user.has_perm('activity.view_activity_report'),
+    ),
 ]
 
 

@@ -3,10 +3,12 @@ from decimal import Decimal
 import random
 
 from django.contrib.auth.models import Group
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.activity.models import ActivityLog
 from apps.adjuncts.models import Adjunct, AdjunctAchievement, PlanStage, Task, TaskComment
 from apps.adjuncts.study import ACADEMIC_YEAR_START
 from apps.conferences.models import Conference, Report, ReportSpeaker
@@ -168,6 +170,8 @@ STUDENT_TASK_TITLES = [
     'Подготовить заявку на конкурс НИРС', 'Реализовать прототип программы', 'Оформить отчёт по НИР',
     'Подготовить доклад на заседание кружка', 'Провести эксперимент и описать результаты',
 ]
+# Демо-пользователи, для которых seed_demo пишет журнал активности (кроме editor).
+DEMO_ACTIVE_LOGINS = ['ivanov', 'petrova', 'smirnov', 'adjunct1', 'adjunct2', 'student1', 'student2']
 # Демо-курсанты с личным кабинетом — первые курсанты списка (подопечные ivanov).
 STUDENT_LOGINS = ['student1', 'student2']
 STUDENT_COMMENTS = ['Приступил(а), к консультации покажу черновик.', 'Сделал(а), прошу посмотреть.',
@@ -307,6 +311,7 @@ class DemoData:
         self.create_student_tasks()
         self.fill_demo_cabinets()
         self.fill_form16()
+        self.create_activity_log()
 
     def create_teachers(self):
         self.teachers = []
@@ -729,3 +734,58 @@ class DemoData:
             if not IntellectualPropertyAuthor.objects.filter(**lookup).exists():
                 ip = ips[index % len(ips)]
                 save(IntellectualPropertyAuthor(intellectual_property=ip, order=ip.authors.count() + 1, **lookup))
+
+    def create_activity_log(self):
+        """Журнал активности за 30 дней: входы и выходы, просмотры, изменения реальных записей, неудачные входы.
+
+        Записи создаются напрямую (bulk_create), а не через сигналы; последние 3 дня активны все демо-пользователи,
+        чтобы отчёт за 7 суток не был пустым.
+        """
+        Action = ActivityLog.Action
+        now = timezone.now()
+        users = list(User.objects.filter(username__in=['editor', *DEMO_ACTIVE_LOGINS]).select_related(
+            'teacher', 'adjunct', 'student'))
+        records = []
+
+        def record(user, action, moment, path='', obj=None, username=None):
+            entry = ActivityLog(user=user, username=username or user.username, action=action, created_at=moment,
+                                path=path, ip=f'10.0.{self.rnd.randint(0, 3)}.{self.rnd.randint(2, 250)}')
+            if obj is not None:
+                entry.content_type = ContentType.objects.get_for_model(obj)
+                entry.object_id, entry.object_repr = obj.pk, str(obj)[:200]
+            records.append(entry)
+
+        for user in users:
+            person = getattr(user, 'teacher', None) or getattr(user, 'adjunct', None) or getattr(user, 'student', None)
+            publications = Publication.objects.order_by('pk')
+            if person is not None:
+                lookup = {f'authors__{key}': value for key, value in author_lookup(person).items()}
+                publications = publications.filter(**lookup)
+            own = list(publications[:5])
+            pages = [person.get_absolute_url() if person else '/', '/tasks/', '/reports/', '/reports/form16/']
+            days = sorted({0, self.rnd.randint(1, 3), *self.rnd.sample(range(4, 30), 6)})
+            for day in days:
+                moment = now - datetime.timedelta(days=day, hours=self.rnd.randint(1, 9),
+                                                  minutes=self.rnd.randint(0, 59))
+                record(user, Action.LOGIN, moment, '/login/')
+                for _ in range(self.rnd.randint(2, 8)):
+                    moment += datetime.timedelta(minutes=self.rnd.randint(1, 15))
+                    record(user, Action.VIEW, moment, self.rnd.choice(pages))
+                if own and self.rnd.random() < 0.5:
+                    moment += datetime.timedelta(minutes=self.rnd.randint(1, 10))
+                    publication = self.rnd.choice(own)
+                    record(user, Action.UPDATE, moment, f'/publications/{publication.pk}/edit/', publication)
+                if self.rnd.random() < 0.2:
+                    moment += datetime.timedelta(minutes=2)
+                    record(user, Action.EXPORT, moment, '/reports/form16/')
+                if self.rnd.random() < 0.7:
+                    record(user, Action.LOGOUT, moment + datetime.timedelta(minutes=5), '/logout/')
+            if own and person is not None:
+                record(user, Action.CREATE, now - datetime.timedelta(days=2, hours=1), '/publications/add/', own[0])
+        # Неудачные входы: с существующим логином и с несуществующими.
+        petrova = next(user for user in users if user.username == 'petrova')
+        record(petrova, Action.LOGIN_FAILED, now - datetime.timedelta(days=1, hours=2), '/login/')
+        for name, days_ago in (('ivanov2', 1), ('test', 3), ('admin1', 12)):
+            records.append(ActivityLog(username=name, action=Action.LOGIN_FAILED, path='/login/',
+                                       created_at=now - datetime.timedelta(days=days_ago, hours=5), ip='10.0.9.13'))
+        ActivityLog.objects.bulk_create(records)
