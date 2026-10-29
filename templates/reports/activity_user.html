@@ -12,6 +12,7 @@
 </nav>
 
 <h1 class="h3 mb-3">Журнал: {{ username }}{% if subject.get_full_name %} <span class="text-muted fw-normal">({{ subject.get_full_name }})</span>{% endif %}</h1>
+{% if subject and user.is_superuser %}<p><a href="{% url 'reports:account_user' subject.pk %}">Карточка учётной записи</a></p>{% endif %}
 {% if not subject %}<p class="text-muted">Записи без учётной записи: неудачные входы с этим логином или действия удалённого пользователя.</p>{% endif %}
 
 <form method="get" class="card shadow-sm mb-3" novalidate>

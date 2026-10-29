@@ -113,6 +113,16 @@ COMMON = {
     'reports:report_list': anything,
     'reports:form16_own': anything,
     'reports:form16': person_report_rule,
+    # Отчёт о научной работе, план адъюнкта, работа с подопечными, карточка для печати — по тем же правилам:
+    # свои и (руководителю) подопечных; вид отчёта, не подходящий человеку, отвечает 404 в представлении.
+    'reports:work_own': anything,
+    'reports:work': person_report_rule,
+    'reports:plan_own': anything,
+    'reports:plan': person_report_rule,
+    'reports:supervision_own': anything,
+    'reports:supervision': person_report_rule,
+    'reports:card': person_report_rule,
+    'reports:account': anything,
     'login': anything,
     'logout': anything,
     'core:home': anything,

@@ -1,0 +1,1 @@
+{# Строка или layout.Text: фрагменты (текст, полужирный). Параметр: value. #}{% if value.parts %}{% for text, bold in value.parts %}{% if bold %}<strong>{{ text }}</strong>{% else %}{{ text }}{% endif %}{% endfor %}{% else %}{{ value }}{% endif %}

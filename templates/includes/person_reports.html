@@ -1,0 +1,9 @@
+{# Отчёты на человека, доступные пользователю (apps.reports.access.person_report_links). Параметр: report_links. #}
+{% if report_links %}
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Отчёты</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            {% for title, url in report_links %}<li><a class="dropdown-item" href="{{ url }}">{{ title }}</a></li>{% endfor %}
+        </ul>
+    </div>
+{% endif %}

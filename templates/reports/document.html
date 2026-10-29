@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{# Страница отчёта или карточки из layout.Document: параметры, документ, «Скачать DOCX» и «Версия для печати». #}
+
+{% block title %}{{ page_title }}{% if person %}: {{ person.short_name }}{% endif %} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="d-print-none">
+    <ol class="breadcrumb">
+        {% if person and not form %}
+            <li class="breadcrumb-item"><a href="{{ person.get_absolute_url }}">{{ person.short_name }}</a></li>
+        {% else %}
+            <li class="breadcrumb-item"><a href="{% url 'reports:report_list' %}">Отчёты</a></li>
+        {% endif %}
+        <li class="breadcrumb-item active" aria-current="page">{{ page_title }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 d-print-none">
+    <h1 class="h3 mb-0">{{ page_title }}</h1>
+    {% if document %}
+        <div class="d-flex gap-2">
+            <a href="{% querystring format='docx' %}" class="btn btn-primary">Скачать DOCX</a>
+            <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Версия для печати</button>
+        </div>
+    {% endif %}
+</div>
+
+{% if form %}
+<form method="get" class="card shadow-sm mb-3 d-print-none" novalidate>
+    <div class="card-body">
+        <input type="hidden" name="submitted" value="1">
+        {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+        {% if form.view %}
+            <div class="btn-group mb-3" role="group" aria-label="{{ form.view.label }}">
+                {% for option in form.view %}
+                    <input type="radio" class="btn-check" name="view" value="{{ option.data.value }}" id="{{ option.id_for_label }}" autocomplete="off"{% if option.data.selected %} checked{% endif %} onchange="this.form.submit()">
+                    <label class="btn btn-outline-primary" for="{{ option.id_for_label }}">{{ option.choice_label }}</label>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="row g-3">
+            {% for field in form.visible_fields %}
+                {% if field.name != 'view' %}
+                    <div class="{% if field.field.widget.allow_multiple_selected %}col-md-6 col-lg-4{% elif field.field.widget.input_type == 'checkbox' %}col-12{% elif field.name == 'person' %}col-md-6{% else %}col-6 col-md-3 col-lg-2{% endif %}">
+                        {% include 'includes/form_field.html' %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Сформировать</button>
+        {% if intro %}<div class="form-text">{{ intro }}</div>{% endif %}
+    </div>
+</form>
+{% endif %}
+
+{% if document %}
+    <div class="bg-white p-3 p-md-4 shadow-sm rounded">
+        <div class="text-center mb-3">
+            <div class="fw-bold">{{ document.title }}</div>
+            {% for line in document.subtitle %}<div>{{ line }}</div>{% endfor %}
+        </div>
+
+        {% if document.info %}
+            <table class="table table-sm table-borderless mb-3">
+                <tbody>
+                {% for label, value in document.info %}
+                    <tr><th class="w-25 fw-semibold">{{ label }}</th><td>{{ value }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        {% for section in document.sections %}
+            <h2 class="h6 fw-bold mt-4">{{ section.title }}</h2>
+            {% if section.table %}
+                {% with table=section.table %}
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle small mb-2">
+                        <thead class="table-light text-center">
+                        <tr>{% for header in table.headers %}<th style="white-space: pre-line">{{ header }}</th>{% endfor %}</tr>
+                        </thead>
+                        <tbody>
+                        {% for row in table.rows %}
+                            {% if row.kind == 'group' %}
+                                <tr><th colspan="{{ table.headers|length }}" class="text-center">{{ row.cells.0 }}</th></tr>
+                            {% else %}
+                                <tr{% if row.kind == 'total' %} class="fw-bold"{% endif %}>
+                                    {% for cell in row.cells %}
+                                        <td{% if forloop.counter0 in table.centered %} class="text-center"{% endif %}>{% include 'reports/includes/rich_text.html' with value=cell %}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endif %}
+                        {% empty %}
+                            <tr><td colspan="{{ table.headers|length }}" class="text-center text-muted">{{ table.empty }}</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endwith %}
+            {% elif section.entries is not None %}
+                {% if section.entries %}
+                    <ol class="small mb-2">
+                        {% for entry in section.entries %}<li class="mb-1">{% include 'reports/includes/rich_text.html' with value=entry %}</li>{% endfor %}
+                    </ol>
+                {% else %}
+                    <p class="text-muted small mb-2">нет</p>
+                {% endif %}
+            {% endif %}
+            {% if section.total %}<p class="fw-bold small mb-1">{{ section.total }}</p>{% endif %}
+            {% if section.note %}<p class="text-muted small mb-1">{{ section.note }}</p>{% endif %}
+        {% endfor %}
+
+        {% for note in document.notes %}<p class="small text-muted mt-3 mb-1">{{ note }}</p>{% endfor %}
+
+        {% if document.signatures %}
+            <div class="mt-4">
+                {% for line in document.signatures %}<p class="mb-3">{{ line }}</p>{% endfor %}
+            </div>
+        {% endif %}
+        <p class="mb-0 text-muted">Дата формирования: {{ document.created|date:'d.m.Y H:i' }}{% if document.author %}, пользователь {{ document.author }}{% endif %}</p>
+    </div>
+{% elif choose %}
+    <div class="card shadow-sm"><div class="card-body text-muted">Выберите человека и нажмите «Сформировать».</div></div>
+{% endif %}
+{% endblock %}

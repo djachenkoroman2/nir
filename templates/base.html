@@ -74,7 +74,7 @@
                             Мои задачи{% if task_menu.attention %} <span class="badge text-bg-warning" title="{{ task_menu.title }}">{{ task_menu.attention }}</span>{% endif %}
                         </a>
                     {% endif %}
-                    <span class="navbar-text text-white">{{ user.get_full_name|default:user.username }}</span>
+                    <a class="nav-link text-white" href="{% url 'reports:account' %}" title="Моя учётная запись">{{ user.get_full_name|default:user.username }}</a>
                     <form method="post" action="{% url 'logout' %}" class="m-0">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline-light btn-sm">Выйти</button>

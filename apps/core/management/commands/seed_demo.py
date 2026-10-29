@@ -312,6 +312,8 @@ class DemoData:
         self.fill_demo_cabinets()
         self.fill_form16()
         self.create_activity_log()
+        # Последним, чтобы не менять уже созданные данные (генератор случайных чисел общий).
+        self.fill_reports()
 
     def create_teachers(self):
         self.teachers = []
@@ -734,6 +736,45 @@ class DemoData:
             if not IntellectualPropertyAuthor.objects.filter(**lookup).exists():
                 ip = ips[index % len(ips)]
                 save(IntellectualPropertyAuthor(intellectual_property=ip, order=ip.authors.count() + 1, **lookup))
+
+    def fill_reports(self):
+        """Отчёты за текущий год (период по умолчанию) не пустые у каждого демо-пользователя.
+
+        У каждого демо-человека — публикация и доклад текущего года, у демо-курсантов и адъюнктов — ещё
+        и достижение текущего года.
+        """
+        year = self.today.year
+        adjuncts = [adjunct for adjunct in self.adjuncts if adjunct.user_id]
+        students = [student for student in self.students if student.user_id]
+        publications = list(Publication.objects.filter(year=year).order_by('pk'))
+        talks = list(Report.objects.filter(conference__start_date__year=year).order_by('pk'))
+        if not talks:
+            # Конференций текущего года нет — добавляем вузовскую конференцию с двумя докладами.
+            start = self.date_in(year)
+            conference = save(Conference(
+                title='Научно-практическая конференция «Информационные технологии в науке и образовании»',
+                level=Conference.Level.UNIVERSITY, location='Москва', start_date=start, end_date=start,
+            ))
+            talks = [save(Report(conference=conference, title=self.title())) for _ in range(2)]
+        for index, person in enumerate([*self.demo_teachers, *adjuncts, *students]):
+            lookup = author_lookup(person)
+            if publications and not PublicationAuthor.objects.filter(publication__year=year, **lookup).exists():
+                publication = publications[index % len(publications)]
+                save(PublicationAuthor(publication=publication, order=publication.authors.count() + 1, **lookup))
+            if talks and not ReportSpeaker.objects.filter(report__conference__start_date__year=year,
+                                                          **lookup).exists():
+                talk = talks[index % len(talks)]
+                save(ReportSpeaker(report=talk, order=talk.speakers.count() + 1, **lookup))
+        for person in [*adjuncts, *students]:
+            if person.achievements.filter(date__year=year).exists():
+                continue
+            kind = self.rnd.choice(list(StudentAchievement.Kind))
+            model = AdjunctAchievement if isinstance(person, Adjunct) else StudentAchievement
+            save(model(
+                **{person._meta.model_name: person}, kind=kind, level=self.rnd.choice(list(StudentAchievement.Level)),
+                title=self.rnd.choice(ACHIEVEMENT_TITLES[kind]), result=self.rnd.choice(ACHIEVEMENT_RESULTS),
+                date=self.date_in(year),
+            ))
 
     def create_activity_log(self):
         """Журнал активности за 30 дней: входы и выходы, просмотры, изменения реальных записей, неудачные входы.

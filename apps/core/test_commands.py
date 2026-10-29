@@ -11,7 +11,10 @@ from apps.core.management.commands._base import DOMAIN_MODELS
 from apps.core.permissions import get_person
 from apps.core.management.commands.seed_demo import DEMO_PASSWORD
 from apps.publications.models import Publication
+from apps.reports.department import SUMMARY, build_department_report
 from apps.reports.form16 import build_form16
+from apps.reports.work import build_work_report
+from apps.reports.works import Period
 from apps.schools.indicators import indicator_totals
 from apps.schools.models import ScientificSchool
 from apps.schools.period import report_period
@@ -103,6 +106,19 @@ class SeedDemoTests(TestCase):
             with self.subTest(login=login):
                 report = build_form16(get_person(User.objects.get(username=login)))
                 self.assertTrue(all(section.rows for section in report.sections))
+
+    def test_reports_for_current_year_are_not_empty(self):
+        """Отчёты строятся по умолчанию за текущий год: у каждого демо-человека есть труды этого года."""
+        run('seed_demo')
+        period = Period.current()
+        for login in ('ivanov', 'petrova', 'smirnov', 'adjunct1', 'adjunct2', 'student1', 'student2'):
+            with self.subTest(login=login):
+                report = build_work_report(get_person(User.objects.get(username=login)), period)
+                self.assertTrue(report.publications and report.talks)
+                if not isinstance(report.person, Teacher):
+                    self.assertTrue(report.achievements)
+        department = build_department_report(period, SUMMARY)
+        self.assertTrue(all(block.total for block in department.blocks))
 
     def test_student_accounts_with_portfolio_and_tasks(self):
         run('seed_demo')

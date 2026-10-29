@@ -1,4 +1,8 @@
-"""Кто может сформировать отчёт на человека кафедры: он сам, его научный руководитель, редактор."""
+"""Кто может сформировать отчёт на человека кафедры: он сам, его научный руководитель, редактор.
+
+Те же правила — для отчёта о научной работе, отчёта о выполнении плана адъюнкта, отчёта о работе с подопечными
+(преподаватель — только сам, подопечных у него руководителя нет) и для печати карточки человека.
+"""
 from django.urls import reverse
 
 from apps.adjuncts.models import Adjunct
@@ -30,11 +34,6 @@ def form16_url(person):
     return reverse('reports:form16', args=[person_kind(person), person.pk])
 
 
-def form16_url_for(user, target):
-    """Адрес формы 16 на target, если пользователю она доступна (для кнопки в карточке), иначе None."""
-    return form16_url(target) if can_view_person_report(user, target) else None
-
-
 def report_people(user):
     """Люди, на которых пользователь может сформировать отчёт (для выбора в форме)."""
     if is_report_editor(user):
@@ -46,3 +45,35 @@ def report_people(user):
     if isinstance(person, Teacher):
         people += [*person.supervised_adjuncts.all(), *person.supervised_students.all()]
     return people
+
+
+# Отчёты о человеке: имя URL → (название, виды людей, на которых отчёт формируется).
+PERSON_REPORTS = {
+    'form16': ('Форма № 16', ('teacher', 'adjunct', 'student')),
+    'work': ('Отчёт о научной работе', ('teacher', 'adjunct', 'student')),
+    'plan': ('Отчёт о выполнении индивидуального плана', ('adjunct',)),
+    'supervision': ('Отчёт о работе с подопечными', ('teacher',)),
+    'card': ('Карточка для печати', ('teacher', 'adjunct', 'student')),
+}
+
+
+def person_report_url(name, person):
+    """Адрес отчёта name на человека: у отчётов одного вида людей в адресе только pk."""
+    kind = person_kind(person)
+    if len(PERSON_REPORTS[name][1]) == 1:
+        return reverse(f'reports:{name}', args=[person.pk])
+    return reverse(f'reports:{name}', args=[kind, person.pk])
+
+
+def person_report_links(user, person):
+    """Отчёты на person, доступные пользователю, — для блока «Отчёты» в карточке: [(название, адрес)]."""
+    if not user.is_authenticated or not can_view_person_report(user, person):
+        return []
+    kind = person_kind(person)
+    return [(title, person_report_url(name, person)) for name, (title, kinds) in PERSON_REPORTS.items()
+            if kind in kinds]
+
+
+def report_people_of(user, kinds):
+    """Люди выбранных видов, на которых пользователь может сформировать отчёт."""
+    return [person for person in report_people(user) if person_kind(person) in kinds]

@@ -5,18 +5,23 @@
 {% block content %}
 <h1 class="h3 mb-3">Отчёты</h1>
 
-<div class="row g-3">
-    {% for report in reports %}
-        <div class="col-12 col-md-6">
-            <a href="{{ report.url }}" class="card h-100 text-decoration-none shadow-sm">
-                <div class="card-body">
-                    <h2 class="h5 card-title">{{ report.title }}</h2>
-                    <p class="card-text text-muted mb-0">{{ report.description }}</p>
-                </div>
-            </a>
-        </div>
-    {% empty %}
-        <div class="col-12"><div class="card shadow-sm"><div class="card-body text-muted">Доступных отчётов нет: отчёты о трудах формируются для преподавателей, адъюнктов и курсантов с учётной записью.</div></div></div>
-    {% endfor %}
-</div>
+{% for title, reports in groups %}
+    <h2 class="h5 mt-4 mb-3">{{ title }}</h2>
+    <div class="row g-3">
+        {% for report in reports %}
+            <div class="col-12 col-md-6">
+                <a href="{{ report.url }}" class="card h-100 text-decoration-none shadow-sm">
+                    <div class="card-body">
+                        <h3 class="h5 card-title">{{ report.title }}</h3>
+                        <p class="card-text text-muted mb-0">{{ report.description }}</p>
+                    </div>
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+{% empty %}
+    <div class="card shadow-sm"><div class="card-body text-muted">Доступных отчётов нет: отчёты о трудах формируются для преподавателей, адъюнктов и курсантов с привязанной учётной записью, отчёты кафедры — для редакторов.</div></div>
+{% endfor %}
+
+<p class="mt-4 mb-0"><a href="{% url 'reports:account' %}">Моя учётная запись</a> — карточка учётной записи для печати и DOCX.</p>
 {% endblock %}

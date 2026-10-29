@@ -10,7 +10,7 @@ from apps.adjuncts.models import Adjunct, Task
 from apps.conferences.models import Report
 from apps.core.cabinet import get_cabinet_person
 from apps.core.permissions import get_teacher
-from apps.reports.access import form16_url_for
+from apps.reports.access import person_report_links
 from apps.core.search import search
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
@@ -78,7 +78,7 @@ class TeacherDetailView(LoginRequiredMixin, DetailView):
         context['show_review_counts'] = is_task_editor(user) or get_teacher(user) == teacher
         # Преподаватель смотрит свою карточку — это его личный кабинет.
         context['is_cabinet'] = teacher.is_authored_by(get_cabinet_person(user))
-        context['form16_url'] = form16_url_for(user, teacher)
+        context['report_links'] = person_report_links(user, teacher)
         return context
 
 
