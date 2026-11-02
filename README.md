@@ -293,6 +293,10 @@ uv run python manage.py clear_data --username boss   # сохранить дру
 
 Развёртывание на сервере описано в [DEPLOY.md](DEPLOY.md).
 
+## Резервное копирование
+
+Команда `uv run python manage.py backup` сохраняет базу данных (SQLite или PostgreSQL) и `.env` в `backups/`, проверяет целостность SQLite-копии и удаляет копии старше 30 дней. Параметры `--output-dir` и `--keep` меняют каталог и срок хранения; повторный запуск в тот же день перезаписывает одноимённые файлы. Ручное и автоматическое копирование, восстановление и правила безопасного хранения описаны в [DEPLOY.md, раздел 6](DEPLOY.md#6-резервное-копирование).
+
 ## Структура проекта
 
 ```
@@ -304,7 +308,8 @@ uv run python manage.py clear_data --username boss   # сохранить дру
 │   ├── core/                     # главная страница, общие формы, поиск, права (permissions.py), личный кабинет (cabinet.py)
 │   │   └── management/commands/
 │   │       ├── seed_demo.py      # демонстрационные данные и пользователи (только для разработки)
-│   │       └── clear_data.py     # очистка базы (только для разработки)
+│   │       ├── clear_data.py     # очистка базы (только для разработки)
+│   │       └── backup.py         # копия базы и .env, проверка целостности, ротация
 │   ├── staff/                    # преподаватели: Teacher, общая модель автора AuthorBase, /teachers/
 │   ├── research/                 # НИОКР: модели ResearchProject и Participant, страницы /research/
 │   ├── publications/             # публикации: Publication, PublicationAuthor, страницы /publications/
