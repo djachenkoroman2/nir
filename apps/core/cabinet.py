@@ -126,6 +126,7 @@ COMMON = {
     'login': anything,
     'logout': anything,
     'core:home': anything,
+    'core:profile_edit': anything,
     'tasks:my_tasks': anything,
     'publications:publication_create': anything,
     'conferences:report_choose': anything,

@@ -395,4 +395,5 @@ class AccountCardView(LoginRequiredMixin, DocumentPageMixin, View):
             account = get_object_or_404(get_user_model(), pk=pk)
             self.page_title = 'Карточка учётной записи'
         document = account_card(account, author=request.user.get_username())
-        return self.render_document(document, account_filenames(account), account=account)
+        return self.render_document(document, account_filenames(account), account=account,
+                                    edit_profile=account.pk == request.user.pk)

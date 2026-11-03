@@ -340,6 +340,7 @@ class PersonReportAccessTests(PeopleMixin, TestCase):
         for role in (TEACHER, ADJUNCT, STUDENT):
             with self.subTest(role=role):
                 self.assertTrue(names <= set(RULES[role]))
+                self.assertIn('core:profile_edit', RULES[role])
                 self.assertNotIn('reports:department', RULES[role])
                 self.assertNotIn('reports:cooperation', RULES[role])
                 self.assertNotIn('reports:account_user', RULES[role])

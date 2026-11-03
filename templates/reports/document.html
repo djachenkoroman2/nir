@@ -19,6 +19,7 @@
     <h1 class="h3 mb-0">{{ page_title }}</h1>
     {% if document %}
         <div class="d-flex gap-2">
+            {% if edit_profile %}<a href="{% url 'core:profile_edit' %}" class="btn btn-outline-primary">Изменить сведения</a>{% endif %}
             <a href="{% querystring format='docx' %}" class="btn btn-primary">Скачать DOCX</a>
             <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Версия для печати</button>
         </div>

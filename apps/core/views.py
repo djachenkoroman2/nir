@@ -1,11 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.views.generic import FormView
 
 from apps.adjuncts.models import Adjunct
 from apps.conferences.models import Conference, Report
@@ -18,6 +19,8 @@ from apps.research.models import ResearchProject
 from apps.schools.models import ScientificSchool
 from apps.staff.models import Teacher
 from apps.students.models import Student, StudentAchievement
+
+from .forms import ProfileForm
 
 
 @login_required
@@ -71,6 +74,22 @@ def home(request):
     ]
     context = {'sections': sections}
     return render(request, 'core/home.html', context)
+
+
+class ProfileEditView(LoginRequiredMixin, FormView):
+    """Редактирование собственных сведений любым вошедшим пользователем."""
+
+    template_name = 'core/profile_form.html'
+    form_class = ProfileForm
+    success_url = reverse_lazy('reports:account')
+
+    def get_form_kwargs(self):
+        return {**super().get_form_kwargs(), 'user': self.request.user}
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(self.request, 'Личные сведения обновлены.')
+        return super().form_valid(form)
 
 
 class RecordPermissionRequiredMixin(PermissionRequiredMixin):
