@@ -19,14 +19,15 @@ from .access import (
 from .activity import CATEGORIES, COUNTERS, build_activity_report, default_period, user_log
 from .activity_docx import build_activity_docx
 from .cards import account_card, account_filenames, card_filenames, person_card
+from .cooperation import build_cooperation_report, cooperation_document, cooperation_filenames
 from .department import SUMMARY, build_department_report, department_document, department_filenames
 from .department import SECTION_CHOICES as DEPARTMENT_SECTIONS
 from .docx_common import DOCX_TYPE, build_document_docx, docx_response  # noqa: F401 — DOCX_TYPE нужен тестам
 from .docx_export import build_docx
 from .form16 import SECTION_CHOICES, build_form16, get_report_person, person_kind
 from .forms import (
-    ActivityReportForm, DepartmentReportForm, Form16Form, PlanReportForm, SupervisionReportForm, UserLogForm,
-    WorkReportForm,
+    ActivityReportForm, CooperationReportForm, DepartmentReportForm, Form16Form, PlanReportForm,
+    SupervisionReportForm, UserLogForm, WorkReportForm,
 )
 from .plan import build_plan_report, plan_document, plan_filenames
 from .registry import report_groups
@@ -318,6 +319,26 @@ class SupervisionReportView(PersonReportView):
 
     def filenames(self, report):
         return supervision_filenames(report)
+
+
+class CooperationReportView(LoginRequiredMixin, DocumentPageMixin, View):
+    """Реестр договоров за период: редакторам и суперпользователю, остальным — 403."""
+
+    page_title = 'Договоры о научно-техническом сотрудничестве'
+    intro = ('В отчёт входят договоры, срок действия которых пересекается с выбранным периодом. '
+             'Пустая дата окончания означает бессрочный договор.')
+
+    def get(self, request):
+        if not is_report_editor(request.user):
+            raise PermissionDenied
+        year = Period.current().year_from
+        data = request.GET if 'submitted' in request.GET else {'year_from': year, 'year_to': year}
+        form = CooperationReportForm(data)
+        if not form.is_valid():
+            return self.render_document(None, None, form=form)
+        report = build_cooperation_report(form.period)
+        return self.render_document(cooperation_document(report, request.user.get_username()),
+                                    cooperation_filenames(report), form=form)
 
 
 class DepartmentReportView(LoginRequiredMixin, DocumentPageMixin, View):

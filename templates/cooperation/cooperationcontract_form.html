@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Изменение договора{% else %}Новый договор{% endif %} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        {% url 'cooperation:contract_list' as section_list_url %}
+        {% include 'includes/section_crumb.html' with url=section_list_url title='Сотрудничество' %}
+        {% if object %}<li class="breadcrumb-item"><a href="{{ object.get_absolute_url }}">{{ object.title|truncatechars:60 }}</a></li>{% endif %}
+        <li class="breadcrumb-item active" aria-current="page">{% if object %}Изменение{% else %}Добавление{% endif %}</li>
+    </ol>
+</nav>
+
+<h1 class="h3 mb-3">{% if object %}Изменение договора{% else %}Новый договор{% endif %}</h1>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+            {% include 'includes/form_field.html' with field=form.title %}
+            <div class="row">
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.number %}</div>
+                <div class="col-md-8">{% include 'includes/form_field.html' with field=form.organization %}</div>
+            </div>
+            {% include 'includes/form_field.html' with field=form.subject %}
+            <div class="row">
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.start_date %}</div>
+                <div class="col-md-4">{% include 'includes/form_field.html' with field=form.end_date %}</div>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'cooperation:contract_list' %}{% endif %}" class="btn btn-outline-secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

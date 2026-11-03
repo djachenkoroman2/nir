@@ -98,6 +98,13 @@ REPORTS = [
         group=lambda user: SUPERVISION if isinstance(get_person(user), Teacher) else DEPARTMENT,
     ),
     ReportType(
+        slug='cooperation',
+        title='Договоры о научно-техническом сотрудничестве',
+        description='Договоры с организациями, действовавшие в выбранном периоде: просмотр, печать и DOCX.',
+        url_name='reports:cooperation',
+        is_available=is_report_editor,
+    ),
+    ReportType(
         slug='department',
         title='Отчёт о НИР кафедры',
         description='Консолидированный (показатели по разделам, годам и людям) и подробный (перечни записей) вид '

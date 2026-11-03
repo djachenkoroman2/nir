@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ cooperationcontract.title|truncatechars:60 }} — {{ block.super }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        {% url 'cooperation:contract_list' as section_list_url %}
+        {% include 'includes/section_crumb.html' with url=section_list_url title='Сотрудничество' %}
+        <li class="breadcrumb-item active" aria-current="page">{{ cooperationcontract.title|truncatechars:60 }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <h1 class="h3 mb-0">{{ cooperationcontract.title }}</h1>
+    {% if user.is_staff %}
+        <div class="d-flex gap-2">
+            {% if perms.cooperation.change_cooperationcontract %}
+                <a href="{% url 'cooperation:contract_update' cooperationcontract.pk %}" class="btn btn-outline-primary">Изменить</a>
+            {% endif %}
+            {% if perms.cooperation.delete_cooperationcontract %}
+                <a href="{% url 'cooperation:contract_delete' cooperationcontract.pk %}" class="btn btn-outline-danger">Удалить</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Номер договора</dt>
+            <dd class="col-sm-8">{{ cooperationcontract.number|default:'—' }}</dd>
+            <dt class="col-sm-4">Организация-контрагент</dt>
+            <dd class="col-sm-8">{{ cooperationcontract.organization }}</dd>
+            <dt class="col-sm-4">Предмет договора</dt>
+            <dd class="col-sm-8" style="white-space: pre-line">{{ cooperationcontract.subject }}</dd>
+            <dt class="col-sm-4">Срок действия</dt>
+            <dd class="col-sm-8">{{ cooperationcontract.term_display }}</dd>
+            <dt class="col-sm-4">Состояние на сегодня</dt>
+            <dd class="col-sm-8 mb-0"><span class="badge {{ cooperationcontract.state_badge }}">{{ cooperationcontract.get_state_display }}</span></dd>
+        </dl>
+    </div>
+</div>
+{% endblock %}

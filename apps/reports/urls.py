@@ -15,6 +15,7 @@ urlpatterns = [
     path('plan/<int:pk>/', views.PlanReportView.as_view(), {'kind': 'adjunct'}, name='plan'),
     path('supervision/', views.SupervisionReportView.as_view(), name='supervision_own'),
     path('supervision/<int:pk>/', views.SupervisionReportView.as_view(), {'kind': 'teacher'}, name='supervision'),
+    path('cooperation/', views.CooperationReportView.as_view(), name='cooperation'),
     path('department/', views.DepartmentReportView.as_view(), name='department'),
     path('card/<str:kind>/<int:pk>/', views.PersonCardView.as_view(), name='card'),
     path('account/', views.AccountCardView.as_view(), name='account'),

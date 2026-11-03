@@ -18,7 +18,8 @@ from apps.students.tests import make_student, make_teacher_user
 from .cabinet import ADJUNCT, RULES, TEACHER
 
 CLOSED_LISTS = [
-    'staff:teacher_list', 'research:project_list', 'publications:publication_list', 'ip:ip_list',
+    'staff:teacher_list', 'research:project_list', 'cooperation:contract_list',
+    'publications:publication_list', 'ip:ip_list',
     'conferences:conference_list', 'schools:school_list', 'students:student_list', 'adjuncts:adjunct_list',
     'admin:index',
 ]

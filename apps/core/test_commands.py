@@ -4,13 +4,16 @@ from unittest import mock
 from django.contrib.auth.models import Group
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.adjuncts.models import Adjunct, Task, TaskComment
+from apps.cooperation.models import CooperationContract
 from apps.core.management.commands._base import DOMAIN_MODELS
 from apps.core.permissions import get_person
 from apps.core.management.commands.seed_demo import DEMO_PASSWORD
 from apps.publications.models import Publication
+from apps.reports.cooperation import build_cooperation_report
 from apps.reports.department import SUMMARY, build_department_report
 from apps.reports.form16 import build_form16
 from apps.reports.work import build_work_report
@@ -65,6 +68,9 @@ class SeedDemoTests(TestCase):
                          set(StudentAchievement.Kind.values))
         self.assertEqual(set(StudentAchievement.objects.values_list('level', flat=True)),
                          set(StudentAchievement.Level.values))
+        self.assertTrue(CooperationContract.objects.filter(end_date__isnull=True).exists())
+        self.assertTrue(CooperationContract.objects.filter(end_date__lt=timezone.localdate()).exists())
+        self.assertTrue(CooperationContract.objects.filter(start_date__gt=timezone.localdate()).exists())
 
     def test_students_are_coauthors_and_ivanov_supervises(self):
         run('seed_demo')
@@ -119,6 +125,7 @@ class SeedDemoTests(TestCase):
                     self.assertTrue(report.achievements)
         department = build_department_report(period, SUMMARY)
         self.assertTrue(all(block.total for block in department.blocks))
+        self.assertTrue(build_cooperation_report(period).contracts)
 
     def test_student_accounts_with_portfolio_and_tasks(self):
         run('seed_demo')

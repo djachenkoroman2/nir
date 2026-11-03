@@ -4,7 +4,7 @@
 Период — годы «с — по»: у публикации есть только год издания, поэтому точнее года период не задаётся.
 - Публикация относится к периоду по году издания, доклад — по дате начала конференции, РИД — по дате регистрации,
   защита — по дате защиты, достижение — по дате.
-- НИОКР входит в период, если сроки работы пересекаются с ним (работа без даты окончания продолжается).
+- НИОКР и договоры входят в период, если сроки пересекаются с ним (запись без даты окончания продолжается).
 """
 from dataclasses import dataclass
 
@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from apps.adjuncts.models import AdjunctAchievement
 from apps.conferences.models import Report
+from apps.cooperation.models import CooperationContract
 from apps.ip.models import IntellectualProperty
 from apps.publications.models import Publication
 from apps.research.models import ResearchProject
@@ -81,6 +82,14 @@ def project_overlaps(year_from, year_to):
 
 def projects(period):
     return ResearchProject.objects.filter(project_overlaps(period.year_from, period.year_to))
+
+
+def contract_overlaps(year_from, year_to):
+    return Q(start_date__year__lte=year_to) & (Q(end_date__isnull=True) | Q(end_date__year__gte=year_from))
+
+
+def contracts(period):
+    return CooperationContract.objects.filter(contract_overlaps(period.year_from, period.year_to))
 
 
 def defenses(period):

@@ -9,6 +9,7 @@ from django.urls import reverse
 from apps.accounts.models import User
 from apps.activity.models import ActivityLog
 from apps.adjuncts.tests import make_adjunct, make_adjunct_user
+from apps.cooperation.models import CooperationContract
 from apps.publications.models import Publication
 from apps.schools.models import DissertationDefense, ScientificSchool
 from apps.staff.tests import make_editor, make_teacher
@@ -16,8 +17,8 @@ from apps.students.test_cabinet import make_student_user
 from apps.students.tests import make_achievement, make_student, make_teacher_user
 
 from .department import (
-    DEFENSES, DETAILED, IPS, PEOPLE, PROJECTS, PUBLICATIONS, SECTION_CHOICES, SPECS, STAFF, STUDENT_ACHIEVEMENTS,
-    SUMMARY, TALKS, build_department_report,
+    CONTRACTS, DEFENSES, DETAILED, IPS, PEOPLE, PROJECTS, PUBLICATIONS, SECTION_CHOICES, SPECS, STAFF,
+    STUDENT_ACHIEVEMENTS, SUMMARY, TALKS, build_department_report,
 )
 from .docx_common import DOCX_TYPE
 from .test_person_reports import docx_text, ip, project, talk
@@ -36,6 +37,13 @@ def metrics(report, key):
 def people(report, key):
     block = next(block for block in report.people if block.key == key)
     return {row.person.last_name: row.values for row in block.rows}, block.totals
+
+
+def contract(title, start, end=None):
+    return CooperationContract.objects.create(
+        title=title, number=title, organization=f'Организация «{title}»', subject=f'Предмет «{title}»',
+        start_date=start, end_date=end,
+    )
 
 
 class DepartmentReportBuildTests(TestCase):
@@ -59,6 +67,10 @@ class DepartmentReportBuildTests(TestCase):
         project('Длинная', datetime.date(2023, 1, 1), leader=self.first)
         project('Закончилась раньше', datetime.date(2020, 1, 1), datetime.date(2024, 12, 31), leader=self.second)
         project('Только 2026', datetime.date(2026, 2, 1), datetime.date(2026, 11, 1), leader=self.second)
+        contract('Длинный договор', datetime.date(2024, 1, 1), datetime.date(2026, 6, 1))
+        contract('Бессрочный договор', datetime.date(2025, 1, 1))
+        contract('Договор только 2026', datetime.date(2026, 1, 1), datetime.date(2026, 12, 31))
+        contract('Договор до периода', datetime.date(2020, 1, 1), datetime.date(2024, 12, 31))
         school = ScientificSchool.objects.create(name='Школа')
         school.leaders.add(self.first)
         DissertationDefense.objects.create(full_name='Защитившийся', kind='candidate', title='Тема',
@@ -78,6 +90,8 @@ class DepartmentReportBuildTests(TestCase):
         self.assertEqual(metrics(report, IPS)['РИД — всего'], ([0, 1], 1))
         # НИОКР считается в каждом году, когда велась, а за период — один раз.
         self.assertEqual(metrics(report, PROJECTS)['НИОКР — всего (выполнялись в периоде)'], ([1, 2], 2))
+        self.assertEqual(metrics(report, CONTRACTS)['Договоры — всего'], ([2, 3], 3))
+        self.assertEqual(metrics(report, CONTRACTS)['Из них бессрочные'], ([1, 1], 1))
         self.assertEqual(metrics(report, DEFENSES)['Защиты диссертаций — всего'], ([0, 1], 1))
         self.assertEqual(metrics(report, STUDENT_ACHIEVEMENTS)['Достижения курсантов — всего'], ([1, 0], 1))
         staff = {label: value for label, value, _ in report.staff}
@@ -113,8 +127,9 @@ class DepartmentReportBuildTests(TestCase):
         self.assertNotIn('Достижения адъюнктов', [block.title for block in report.blocks])
         staff = [label for label, _, _ in report.staff]
         self.assertEqual(staff[0], 'Курсанты, занимающиеся НИР (обучаются) — всего')
-        # НИОКР и защиты — показатели кафедры в целом.
+        # НИОКР, договоры и защиты — показатели кафедры в целом.
         self.assertEqual(metrics(report, PROJECTS)['НИОКР — всего (выполнялись в периоде)'][1], 2)
+        self.assertEqual(metrics(report, CONTRACTS)['Договоры — всего'][1], 3)
 
     def test_sections_filter(self):
         report = build_department_report(self.period, SUMMARY, sections=[TALKS, PEOPLE])
@@ -143,6 +158,12 @@ class DepartmentReportBuildTests(TestCase):
         # Люди кафедры выделены полужирным, внешние — нет.
         self.assertIn(('Первый И. И.', True), publications[0].parts)
         self.assertIn(('Smith J.', False), publications[0].parts)
+        contracts = next(block for block in report.blocks if block.key == CONTRACTS).entries
+        contract_text = ' '.join(map(str, contracts))
+        self.assertIn('Бессрочный договор', contract_text)
+        self.assertIn('Организация «Бессрочный договор»', contract_text)
+        self.assertIn('бессрочно', contract_text)
+        self.assertNotIn('Договор до периода', contract_text)
         self.assertIsNone(report.people)
 
 
@@ -150,6 +171,7 @@ class DepartmentReportViewTests(TestCase):
     def setUp(self):
         self.teacher = make_teacher(last_name='Первый')
         publication('Статья', 2025, authors=[{'teacher': self.teacher}])
+        contract('Договор', datetime.date(2025, 1, 1))
         self.editor = make_editor()
 
     def params(self, **extra):
@@ -203,6 +225,7 @@ class DepartmentReportViewTests(TestCase):
                 text = docx_text(response)
                 self.assertIn('Отчёт о научно-исследовательской работе кафедры', text)
                 self.assertIn('Публикации — всего' if view == SUMMARY else 'Статья (статья)', text)
+                self.assertIn('Договоры — всего' if view == SUMMARY else 'Предмет «Договор»', text)
                 self.assertIn('Заведующий кафедрой', text)
         self.assertEqual(ActivityLog.objects.filter(action=ActivityLog.Action.EXPORT, path=URL).count(), 2)
 
@@ -223,6 +246,7 @@ class DepartmentReportViewTests(TestCase):
             talk(f'Доклад {index}', datetime.date(2025, 1, 1), [{'teacher': self.teacher}, {'student': student}])
             ip(f'РИД {index}', datetime.date(2024, 5, 1), [{'teacher': colleague}])
             project(f'НИОКР {index}', datetime.date(2024, 1, 1), leader=colleague)
+            contract(f'Договор {index}', datetime.date(2024, 1, 1))
 
         add(0)  # по записи каждого вида: подгрузка авторов и участников выполняется, только если записи есть
         few = {view: count(view) for view in (SUMMARY, DETAILED)}

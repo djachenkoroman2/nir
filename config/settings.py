@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.staff',
     'apps.research',
+    'apps.cooperation',
     'apps.publications',
     'apps.ip',
     'apps.conferences',

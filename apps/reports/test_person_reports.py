@@ -341,6 +341,7 @@ class PersonReportAccessTests(PeopleMixin, TestCase):
             with self.subTest(role=role):
                 self.assertTrue(names <= set(RULES[role]))
                 self.assertNotIn('reports:department', RULES[role])
+                self.assertNotIn('reports:cooperation', RULES[role])
                 self.assertNotIn('reports:account_user', RULES[role])
 
     def test_report_list_groups(self):
@@ -354,9 +355,9 @@ class PersonReportAccessTests(PeopleMixin, TestCase):
         self.assertEqual(groups(self.teacher_user), {'Мои отчёты': ['form16', 'work'],
                                                      'Отчёты по подопечным': ['supervision']})
         self.assertEqual(groups(self.editor), {'Отчёты кафедры': ['form16', 'work', 'plan', 'supervision',
-                                                                    'department']})
+                                                                    'cooperation', 'department']})
         self.assertEqual(groups(self.root), {
-            'Отчёты кафедры': ['form16', 'work', 'plan', 'supervision', 'department'],
+            'Отчёты кафедры': ['form16', 'work', 'plan', 'supervision', 'cooperation', 'department'],
             'Администрирование': ['activity'],
         })
         self.assertEqual(groups(self.reader), {})

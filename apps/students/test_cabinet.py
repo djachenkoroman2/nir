@@ -97,7 +97,8 @@ class WhitelistTests(CabinetTestCase):
         foreign_publication = Publication.objects.create(title='Чужая', year=2026)
         conference = Conference.objects.create(title='Конференция', level='national', start_date='2026-05-01')
         closed = {
-            'staff:teacher_list': 403, 'research:project_list': 403, 'publications:publication_list': 403,
+            'staff:teacher_list': 403, 'research:project_list': 403, 'cooperation:contract_list': 403,
+            'reports:cooperation': 403, 'publications:publication_list': 403,
             'ip:ip_list': 403, 'ip:ip_create': 403, 'conferences:conference_list': 403,
             'schools:school_list': 403, 'students:student_list': 403, 'students:student_create': 403,
             'adjuncts:adjunct_list': 403, 'admin:index': 403,

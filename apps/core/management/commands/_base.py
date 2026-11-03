@@ -6,6 +6,7 @@ from django.db.migrations.executor import MigrationExecutor
 
 from apps.adjuncts.models import Adjunct, AdjunctAchievement, PlanStage, Task, TaskComment
 from apps.conferences.models import Conference, Report, ReportSpeaker
+from apps.cooperation.models import CooperationContract
 from apps.ip.models import IntellectualProperty, IntellectualPropertyAuthor
 from apps.publications.models import Publication, PublicationAuthor
 from apps.research.models import Participant, ResearchProject
@@ -22,6 +23,7 @@ DOMAIN_MODELS = [
     DissertationDefense,
     TaskComment, Task, PlanStage, AdjunctAchievement, Adjunct,
     ScientificSchool,
+    CooperationContract,
     Participant, ResearchProject,
     StudentAchievement, Student,
     Teacher,

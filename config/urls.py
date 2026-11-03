@@ -11,6 +11,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('teachers/', include('apps.staff.urls')),
     path('research/', include('apps.research.urls')),
+    path('cooperation/', include('apps.cooperation.urls')),
     path('publications/', include('apps.publications.urls')),
     path('ip/', include('apps.ip.urls')),
     path('conferences/', include('apps.conferences.urls')),

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Сотрудничество — {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Договоры о научно-техническом сотрудничестве</h1>
+    {% if user.is_staff and perms.cooperation.add_cooperationcontract %}
+        <a href="{% url 'cooperation:contract_create' %}" class="btn btn-primary">Добавить договор</a>
+    {% endif %}
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-12 col-md-6">
+        <input type="search" name="q" value="{{ query }}" class="form-control"
+               placeholder="Название, номер, организация или предмет" aria-label="Поиск по договорам">
+    </div>
+    <div class="col-8 col-md-4">
+        <select name="state" class="form-select" aria-label="Состояние договора">
+            {% for value, label in filter_choices %}
+                <option value="{{ value }}" {% if state == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-4 col-md-2 d-grid">
+        <button type="submit" class="btn btn-outline-primary">Найти</button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+            <tr><th>Название</th><th>Номер</th><th>Организация</th><th>Срок действия</th><th>Состояние</th></tr>
+            </thead>
+            <tbody>
+            {% for contract in cooperationcontract_list %}
+                <tr>
+                    <td><a href="{{ contract.get_absolute_url }}">{{ contract.title }}</a></td>
+                    <td>{{ contract.number|default:'—' }}</td>
+                    <td>{{ contract.organization }}</td>
+                    <td class="text-nowrap">{{ contract.term_display }}</td>
+                    <td><span class="badge {{ contract.state_badge }}">{{ contract.get_state_display }}</span></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Договоры не найдены.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'includes/pagination.html' %}
+{% endblock %}

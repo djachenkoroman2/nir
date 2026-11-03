@@ -12,6 +12,7 @@ from apps.activity.models import ActivityLog
 from apps.adjuncts.models import Adjunct, AdjunctAchievement, PlanStage, Task, TaskComment
 from apps.adjuncts.study import ACADEMIC_YEAR_START
 from apps.conferences.models import Conference, Report, ReportSpeaker
+from apps.cooperation.models import CooperationContract
 from apps.ip.models import IntellectualProperty, IntellectualPropertyAuthor
 from apps.publications.models import Publication, PublicationAuthor
 from apps.research.models import Participant, ResearchProject
@@ -312,8 +313,9 @@ class DemoData:
         self.fill_demo_cabinets()
         self.fill_form16()
         self.create_activity_log()
-        # Последним, чтобы не менять уже созданные данные (генератор случайных чисел общий).
         self.fill_reports()
+        # Договоры детерминированы и создаются последними, не меняя последовательность случайного генератора.
+        self.create_contracts()
 
     def create_teachers(self):
         self.teachers = []
@@ -775,6 +777,48 @@ class DemoData:
                 title=self.rnd.choice(ACHIEVEMENT_TITLES[kind]), result=self.rnd.choice(ACHIEVEMENT_RESULTS),
                 date=self.date_in(year),
             ))
+
+    def create_contracts(self):
+        """Договоры с разными сроками: отчёты текущего года заполнены, фильтры показывают все состояния."""
+        year = self.today.year
+        rows = [
+            (
+                'Совместные исследования интеллектуальных систем', f'НТС-{year}/01',
+                'ООО «Научно-технический центр «Перспектива»',
+                'Совместная разработка методов интеллектуального анализа технологических данных.',
+                datetime.date(year, 1, 15), datetime.date(year, 12, 31),
+            ),
+            (
+                'Бессрочное научно-техническое сотрудничество', '',
+                'ФГБОУ ВО «Национальный исследовательский университет»',
+                'Обмен научными результатами и совместная подготовка научных публикаций.',
+                datetime.date(year - 2, 2, 1), None,
+            ),
+            (
+                'Переходящий договор по прикладным исследованиям', f'ПИ-{year - 1}/17',
+                'АО «Институт прикладных технологий»',
+                'Экспериментальные исследования и апробация методов обработки сигналов.',
+                datetime.date(year - 1, 6, 1), datetime.date(year, 11, 30),
+            ),
+            (
+                'Завершённая опытно-конструкторская работа', 'ОКР-2020/04',
+                'ООО «Инженерные системы»',
+                'Разработка опытного образца автоматизированной измерительной системы.',
+                datetime.date(self.first_year - 2, 1, 10), datetime.date(self.first_year - 1, 12, 31),
+            ),
+            (
+                'Планируемое совместное исследование', f'НТС-{year + 1}/01',
+                'ООО «Центр компьютерного моделирования»',
+                'Подготовка и проведение совместного исследования цифровых двойников оборудования.',
+                self.today + datetime.timedelta(days=30), self.today + datetime.timedelta(days=395),
+            ),
+        ]
+        self.contracts = []
+        for title, number, organization, subject, start, end in rows:
+            self.contracts.append(save(CooperationContract(
+                title=title, number=number, organization=organization, subject=subject,
+                start_date=start, end_date=end,
+            )))
 
     def create_activity_log(self):
         """Журнал активности за 30 дней: входы и выходы, просмотры, изменения реальных записей, неудачные входы.

@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from apps.adjuncts.models import Adjunct
 from apps.conferences.models import Conference, Report
+from apps.cooperation.models import CooperationContract
 from apps.core.cabinet import get_cabinet_person
 from apps.core.permissions import can_manage, get_person, is_editor
 from apps.ip.models import IntellectualProperty
@@ -25,7 +26,8 @@ def home(request):
     if person is not None:
         # Личный кабинет преподавателя, адъюнкта или курсанта — его карточка; разделы системы ему закрыты.
         return redirect(person)
-    year = timezone.localdate().year
+    today = timezone.localdate()
+    year = today.year
     sections = [
         {
             'title': 'Преподаватели', 'url': reverse('staff:teacher_list'),
@@ -35,6 +37,11 @@ def home(request):
             'title': 'НИОКР', 'url': reverse('research:project_list'),
             'text': f'Всего: {ResearchProject.objects.count()}, выполняются: '
                     f'{ResearchProject.objects.filter(status=ResearchProject.Status.IN_PROGRESS).count()}',
+        },
+        {
+            'title': 'Сотрудничество', 'url': reverse('cooperation:contract_list'),
+            'text': f'Договоров: {CooperationContract.objects.count()}, действующих: '
+                    f'{CooperationContract.objects.filter(CooperationContract.active_filter(today)).count()}',
         },
         {
             'title': 'Публикации', 'url': reverse('publications:publication_list'),

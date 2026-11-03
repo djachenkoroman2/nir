@@ -131,6 +131,10 @@ class PlanReportForm(PersonReportForm):
                                              *((year, f'{year}-й год') for year in range(1, years + 1))]
 
 
+class CooperationReportForm(PeriodFormMixin, BootstrapFormMixin, forms.Form):
+    field_order = ['year_from', 'year_to']
+
+
 class DepartmentReportForm(PeriodFormMixin, BootstrapFormMixin, forms.Form):
     view = forms.ChoiceField(label='Вид отчёта', choices=DEPARTMENT_VIEWS, widget=forms.RadioSelect)
     sections = forms.MultipleChoiceField(

@@ -10,7 +10,8 @@ from .models import ActivityLog
 # Главные предметные модели, изменения которых пишутся в журнал. Строки авторов, докладчиков и участников
 # (PublicationAuthor и т. п.) не пишутся: иначе одно сохранение публикации давало бы десятки записей.
 TRACKED_MODELS = [
-    'staff.Teacher', 'research.ResearchProject', 'publications.Publication', 'ip.IntellectualProperty',
+    'staff.Teacher', 'research.ResearchProject', 'cooperation.CooperationContract',
+    'publications.Publication', 'ip.IntellectualProperty',
     'conferences.Conference', 'conferences.Report', 'schools.ScientificSchool', 'schools.DissertationDefense',
     'students.Student', 'students.StudentAchievement', 'adjuncts.Adjunct', 'adjuncts.PlanStage',
     'adjuncts.AdjunctAchievement', 'adjuncts.Task', 'adjuncts.TaskComment',

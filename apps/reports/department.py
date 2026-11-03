@@ -9,7 +9,7 @@
 - в таблице по людям запись засчитывается каждому автору, поэтому сумма по людям может быть больше итога;
 - записи только с внешними авторами в отчёт не входят;
 - категории людей отбирают публикации, РИД, доклады (есть автор выбранной категории), достижения, кадровый состав
-  и таблицу по людям; НИОКР, защиты и научные школы — показатели кафедры в целом, категории к ним не применяются.
+  и таблицу по людям; НИОКР, договоры, защиты и научные школы — показатели кафедры в целом.
 """
 from collections import Counter
 from dataclasses import dataclass, field
@@ -37,9 +37,9 @@ SUMMARY, DETAILED = 'summary', 'detailed'
 VIEWS = [(SUMMARY, 'Консолидированный'), (DETAILED, 'Подробный')]
 VIEW_TITLES = {SUMMARY: 'консолидированный', DETAILED: 'подробный'}
 
-STAFF, PUBLICATIONS, IPS, TALKS, PROJECTS, DEFENSES, STUDENT_ACHIEVEMENTS, ADJUNCT_ACHIEVEMENTS, SCHOOLS, PEOPLE = (
-    'staff', 'publications', 'ips', 'talks', 'projects', 'defenses', 'student_achievements', 'adjunct_achievements',
-    'schools', 'people',
+STAFF, PUBLICATIONS, IPS, TALKS, PROJECTS, CONTRACTS, DEFENSES, STUDENT_ACHIEVEMENTS, ADJUNCT_ACHIEVEMENTS, SCHOOLS, PEOPLE = (
+    'staff', 'publications', 'ips', 'talks', 'projects', 'contracts', 'defenses', 'student_achievements',
+    'adjunct_achievements', 'schools', 'people',
 )
 SECTION_CHOICES = [
     (STAFF, 'Кадровый состав'),
@@ -47,6 +47,7 @@ SECTION_CHOICES = [
     (IPS, 'Результаты интеллектуальной деятельности'),
     (TALKS, 'Доклады на конференциях'),
     (PROJECTS, 'НИОКР'),
+    (CONTRACTS, 'Договоры о научно-техническом сотрудничестве'),
     (DEFENSES, 'Защиты диссертаций'),
     (STUDENT_ACHIEVEMENTS, 'Достижения курсантов'),
     (ADJUNCT_ACHIEVEMENTS, 'Достижения адъюнктов'),
@@ -160,6 +161,17 @@ def project_entries(queryset):
     return result
 
 
+def contract_entries(queryset):
+    result = []
+    for contract in queryset.order_by('start_date', 'title'):
+        number = f' № {contract.number}' if contract.number else ''
+        end = date(contract.end_date) if contract.end_date else 'бессрочно'
+        text = (f'{contract.title}{number}. Организация: {contract.organization}. '
+                f'Предмет: {contract.subject}. Срок действия: {date(contract.start_date)} — {end}.')
+        result.append(Text([(text, False)]))
+    return result
+
+
 def defense_entries(queryset):
     result = []
     for defense in queryset.select_related('school', 'supervisor').order_by('defense_date', 'full_name'):
@@ -244,6 +256,16 @@ SPECS = [
             Metric('участников (преподавателей кафедры)', field='memberships__teacher'),
         ],
         project_entries,
+    ),
+    Spec(
+        CONTRACTS,
+        lambda period, categories: works.contracts(period),
+        lambda year: works.contract_overlaps(year, year),
+        [
+            Metric('Договоры — всего'),
+            Metric('Из них бессрочные', Q(end_date__isnull=True)),
+        ],
+        contract_entries,
     ),
     Spec(
         DEFENSES,
@@ -515,11 +537,11 @@ NOTES = [
     'В итогах кафедры запись считается один раз, сколько бы людей кафедры ни было среди её авторов. '
     'В таблице по людям запись засчитывается каждому автору, поэтому сумма строк может быть больше итога.',
     'Публикация относится к периоду по году издания, доклад — по дате начала конференции, РИД — по дате регистрации, '
-    'защита — по дате защиты, достижение — по дате. НИОКР входит в каждый год, в котором велась работа, '
-    'поэтому сумма НИОКР по годам может быть больше итога за период.',
+    'защита — по дате защиты, достижение — по дате. НИОКР и договоры входят в каждый год, который пересекается '
+    'со сроком работы или действия, поэтому их сумма по годам может быть больше итога за период.',
     'Записи только с внешними авторами в отчёт не входят. Категории людей отбирают публикации, РИД и доклады '
-    '(есть автор выбранной категории), достижения, кадровый состав и таблицу по людям; НИОКР, защиты и научные '
-    'школы — показатели кафедры в целом.',
+    '(есть автор выбранной категории), достижения, кадровый состав и таблицу по людям; НИОКР, договоры, защиты '
+    'и научные школы — показатели кафедры в целом.',
 ]
 
 
