@@ -1,0 +1,19 @@
+{% load static %}
+<section class="help-scenario" id="{{ scenario.slug }}">
+    <h2 class="h4">{{ number }}. {{ scenario.title }}</h2>
+    <p>{{ scenario.goal }}</p>
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6"><div class="card h-100 bg-light"><div class="card-body"><div class="help-label">Предусловия</div><p class="mb-0">{{ scenario.preconditions }}</p></div></div></div>
+        <div class="col-lg-6"><div class="card h-100 bg-light"><div class="card-body"><div class="help-label">Пример</div><p class="mb-0">{{ scenario.example }}</p></div></div></div>
+    </div>
+    <h3 class="h6">Порядок действий</h3>
+    <ol>{% for step in scenario.steps %}<li class="mb-2">{{ step }}</li>{% endfor %}</ol>
+    <div class="alert alert-success"><strong>Результат.</strong> {{ scenario.result }}</div>
+    <h3 class="h6">Ошибки и ограничения</h3>
+    <ul>{% for error in scenario.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+    <figure class="help-figure">
+        <img src="{% static scenario.image.static_path %}" alt="{{ scenario.image.alt }}" loading="lazy">
+        <figcaption class="mt-3"><strong>Рисунок — {{ scenario.image.title }}</strong><ol class="help-legend mt-2 mb-0">{% for item in scenario.image.legend %}<li>{{ item }}</li>{% endfor %}</ol></figcaption>
+    </figure>
+    {% if scenario.related %}<p class="mt-3 mb-0"><strong>Что дальше:</strong> {{ scenario.related }}</p>{% endif %}
+</section>

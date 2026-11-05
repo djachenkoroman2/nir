@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Справка — НИР кафедры{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'help/help.css' %}">{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h1 class="h2 mb-2">Справочная система</h1>
+        <p class="text-muted mb-0">Пошаговые инструкции соответствуют вашим фактическим правам в системе.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'help:pdf' own_role %}">Скачать мой PDF</a>
+</div>
+<div class="card shadow-sm mb-4 border-primary">
+    <div class="card-body">
+        <div class="help-label">Ваше руководство</div>
+        <h2 class="h4">{{ own_guide.title }}</h2>
+        <p>{{ own_guide.description }}</p>
+        <a class="btn btn-primary" href="{% url 'help:guide' own_role %}">Открыть руководство</a>
+        <span class="ms-2 text-muted">{{ chapters|length }} глав, общие сведения уже включены.</span>
+    </div>
+</div>
+{% if guides|length > 1 %}
+    <h2 class="h4">Материалы для сопровождения пользователей</h2>
+    <p class="text-muted">Редактор и администратор могут открывать руководства всех поддерживаемых ролей.</p>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+        {% for guide in guides %}
+            <div class="col"><div class="card h-100 shadow-sm"><div class="card-body d-flex flex-column">
+                <h3 class="h5">{{ guide.title }}</h3>
+                <p class="text-muted flex-grow-1">{{ guide.description }}</p>
+                <div class="d-flex gap-2"><a class="btn btn-outline-primary btn-sm" href="{% url 'help:guide' guide.slug %}">Открыть</a><a class="btn btn-outline-secondary btn-sm" href="{% url 'help:pdf' guide.slug %}">PDF</a></div>
+            </div></div></div>
+        {% endfor %}
+    </div>
+{% else %}
+    <h2 class="h4">Как пользоваться справкой</h2>
+    <ol class="text-muted"><li>Откройте руководство и выберите главу в оглавлении.</li><li>Следуйте нумерованным шагам и стрелкам на снимках экрана.</li><li>Для работы без интернета скачайте PDF: в него включены и общие, и ролевые главы.</li></ol>
+{% endif %}
+{% endblock %}

@@ -159,7 +159,18 @@ sudo -u nir uv run python manage.py create_admin --password '<сложный п�
 sudo -u nir uv run python manage.py check --deploy
 ```
 
-`collectstatic` собирает статические файлы в каталог `/opt/nir/staticfiles`, откуда их отдаёт Nginx.
+`collectstatic` собирает статические файлы в каталог `/opt/nir/staticfiles`, откуда их отдаёт Nginx. Сюда также попадают демонстрационные PNG справки из `static/help/images/`.
+
+PDF-руководства `/help/<роль>/pdf/` уже собраны и версионируются в `apps/help/generated/`. Для их скачивания на production **не нужны** LibreOffice, Firefox или Poppler: файлы отдаёт Django после проверки роли, а не Nginx как статика. Не выносите `apps/help/generated/` в `static/` и не добавляйте для него отдельный публичный `alias`.
+
+Если изменились интерфейс или содержимое справки, пересъёмку и сборку выполняют на машине разработчика:
+
+```bash
+uv run python manage.py capture_help --seed 2026
+uv run python manage.py build_help
+```
+
+Для этих двух команд на машине разработчика нужны Firefox, Geckodriver, ImageMagick, LibreOffice и Poppler. Рабочая база не используется: снимки создаются на отдельной SQLite в `/tmp/opencode/nir-help-capture/`. Полученные PNG и PDF фиксируются в Git вместе с изменением кода. На сервере после обновления кода достаточно повторить `collectstatic` и перезапустить приложение; запускать `capture_help` или `build_help` там не требуется.
 
 > **Не запускайте на рабочем сервере** команды `seed_demo` и `clear_data`: они предназначены для разработки. Первая добавляет демонстрационные данные и пользователей с общим паролем, вторая удаляет все данные. При `DJANGO_DEBUG=False` они без `--force` не выполняются.
 

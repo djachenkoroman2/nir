@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ chapter.title }} — {{ guide.title }}{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'help/help.css' %}">{% endblock %}
+{% block content %}
+<nav aria-label="Хлебные крошки" class="mb-3"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'help:index' %}">Справка</a></li><li class="breadcrumb-item"><a href="{% url 'help:guide' role %}">{{ guide.title }}</a></li><li class="breadcrumb-item active" aria-current="page">{{ chapter.title }}</li></ol></nav>
+<div class="help-layout">
+    <aside class="help-toc help-print-hidden">
+        <div class="card shadow-sm mb-3"><div class="card-body">
+            <h2 class="h6">Главы руководства</h2>
+            <div class="nav nav-pills flex-column">
+                {% for item in chapters %}<a class="nav-link{% if item.slug == chapter.slug %} active{% endif %}" href="{% url 'help:chapter' role item.slug %}">{{ forloop.counter }}. {{ item.title }}</a>{% endfor %}
+            </div>
+        </div></div>
+        <a class="btn btn-outline-primary btn-sm w-100" href="{% url 'help:pdf' role %}">Скачать полный PDF</a>
+    </aside>
+    <article>
+        <h1 class="h2">{{ chapter.title }}</h1>
+        <p class="lead">{{ chapter.intro }}</p>
+        <nav class="card mb-4 help-print-hidden" aria-label="Сценарии главы"><div class="card-body"><h2 class="h6">В этой главе</h2><ol class="mb-0">{% for scenario in chapter.scenarios %}<li><a href="#{{ scenario.slug }}">{{ scenario.title }}</a></li>{% endfor %}</ol></div></nav>
+        {% for scenario in chapter.scenarios %}
+            {% include 'help/_scenario.html' with scenario=scenario number=forloop.counter %}
+        {% endfor %}
+        <div class="d-flex justify-content-between gap-3 mt-4 help-print-hidden">
+            <span>{% if previous_chapter %}<a class="btn btn-outline-secondary" href="{% url 'help:chapter' role previous_chapter.slug %}">← {{ previous_chapter.title }}</a>{% endif %}</span>
+            <span>{% if next_chapter %}<a class="btn btn-outline-primary" href="{% url 'help:chapter' role next_chapter.slug %}">{{ next_chapter.title }} →</a>{% endif %}</span>
+        </div>
+    </article>
+</div>
+{% endblock %}

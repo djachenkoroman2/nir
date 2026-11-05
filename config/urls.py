@@ -20,5 +20,6 @@ urlpatterns = [
     path('adjuncts/', include('apps.adjuncts.urls')),
     path('tasks/', include('apps.adjuncts.task_urls')),
     path('reports/', include('apps.reports.urls')),
+    path('help/', include('apps.help.urls')),
     path('', include('apps.core.urls')),
 ]

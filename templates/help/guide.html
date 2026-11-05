@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ guide.title }} — Справка{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'help/help.css' %}">{% endblock %}
+{% block content %}
+<nav aria-label="Хлебные крошки" class="mb-3"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'help:index' %}">Справка</a></li><li class="breadcrumb-item active" aria-current="page">{{ guide.title }}</li></ol></nav>
+<div class="help-layout">
+    <aside class="help-toc help-print-hidden">
+        <div class="card shadow-sm"><div class="card-body">
+            <h2 class="h6">Доступные руководства</h2>
+            <div class="nav nav-pills flex-column help-role-switch mb-3">
+                {% for item in available_guides %}<a class="nav-link{% if item.slug == role %} active{% endif %}" href="{% url 'help:guide' item.slug %}">{{ item.title }}</a>{% endfor %}
+            </div>
+            <a class="btn btn-primary btn-sm w-100" href="{% url 'help:pdf' role %}">Скачать PDF</a>
+        </div></div>
+    </aside>
+    <div>
+        <h1 class="h2">{{ guide.title }}</h1>
+        <p class="lead">{{ guide.description }}</p>
+        <div class="alert alert-info">Номера на скриншотах соответствуют легенде под изображением. В PDF включены все перечисленные ниже главы.</div>
+        <h2 class="h4">Оглавление</h2>
+        <div class="list-group shadow-sm">
+            {% for chapter in chapters %}
+                <a class="list-group-item list-group-item-action" href="{% url 'help:chapter' role chapter.slug %}">
+                    <div class="d-flex w-100 justify-content-between gap-3"><h3 class="h6 mb-1">{{ forloop.counter }}. {{ chapter.title }}</h3><span class="badge text-bg-light">{{ chapter.scenarios|length }}</span></div>
+                    <p class="mb-0 text-muted small">{{ chapter.intro }}</p>
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

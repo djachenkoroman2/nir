@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Учёт показателей НИР кафедры{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    {% block head_extra %}{% endblock %}
 </head>
 <body class="bg-light d-flex flex-column min-vh-100">
 <nav class="navbar navbar-expand-xl navbar-dark bg-primary d-print-none">
@@ -70,6 +71,8 @@
                         <li class="nav-item"><a class="nav-link" href="{% url 'admin:index' %}">Администрирование</a></li>
                     {% endif %}
                     {% endif %}
+                    {% url 'help:index' as help_url %}
+                    <li class="nav-item"><a class="nav-link{% if help_url in request.path %} active{% endif %}" href="{{ help_url }}">Справка</a></li>
                 </ul>
                 <div class="d-flex flex-wrap align-items-center gap-3">
                     {% if task_menu.show %}
