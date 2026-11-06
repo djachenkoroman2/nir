@@ -1,0 +1,21 @@
+/* Общие правила интерфейса. */
+.app-navbar .nav-link { white-space: nowrap; }
+.app-navbar #mainNav,
+.app-navbar #mainNav > .navbar-nav { min-width: 0; }
+
+/* На широких экранах длинное меню переносится целыми пунктами, а не обрезается справа. */
+@media (min-width: 1400px) {
+    .app-navbar #mainNav { flex-wrap: wrap; }
+    .app-navbar #mainNav > .navbar-nav {
+        flex: 1 1 0;
+        flex-wrap: wrap;
+        margin-right: 0;
+        row-gap: .125rem;
+    }
+    .app-navbar-user { flex: 0 0 auto; margin-left: auto; }
+}
+
+/* В раскрытом мобильном меню действия пользователя занимают отдельную строку. */
+@media (max-width: 1399.98px) {
+    .app-navbar-user { width: 100%; margin-top: .5rem; }
+}

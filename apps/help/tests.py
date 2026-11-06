@@ -168,6 +168,9 @@ class PageTests(HelpFixture):
                 response = self.client.get(url)
                 self.assertContains(response, f'href="{reverse("help:index")}"')
                 self.assertContains(response, 'Справка')
+                self.assertContains(response, 'navbar-expand-xxl')
+                self.assertContains(response, 'container-fluid')
+                self.assertContains(response, 'core.css')
 
     def test_all_chapters_render_all_scenarios(self):
         self.client.force_login(self.editor)
