@@ -192,6 +192,15 @@ def pdf_pages(path):
     return int(match.group(1)) if match else None
 
 
+def pdf_text(path):
+    """Нормализованный текст PDF или None, если Poppler не установлен."""
+    executable = shutil.which('pdftotext')
+    if not executable:
+        return None
+    result = _run([executable, str(path), '-'])
+    return ' '.join(result.stdout.split())
+
+
 def inspect_pdf(path, guide=None, chapters=()):
     """Проверяет реальный PDF и, при наличии Poppler, извлечение русского текста."""
     issues = []
@@ -202,15 +211,21 @@ def inspect_pdf(path, guide=None, chapters=()):
         issues.append(f'Некорректная сигнатура PDF: {path}')
     if guide is not None and pdf_pages(path) == 0:
         issues.append(f'PDF не содержит страниц: {path}')
-    executable = shutil.which('pdftotext')
-    if executable and guide is not None:
+    if shutil.which('pdftotext') and guide is not None:
         try:
-            result = _run([executable, str(path), '-'])
-            normalized = ' '.join(result.stdout.split())
+            normalized = pdf_text(path)
             expected = [guide.manual_title, *(item.title for item in chapters)]
             for title in expected:
                 if ' '.join(title.split()) not in normalized:
                     issues.append(f'В PDF не найден обязательный заголовок «{title}»: {path}')
+            for item in chapters:
+                for scenario in item.scenarios:
+                    example = ' '.join(scenario.example.split())
+                    if example not in normalized:
+                        issues.append(
+                            f'В PDF не найден ролевой пример «{scenario.example}» '
+                            f'({item.slug}/{scenario.slug}): {path}'
+                        )
         except (subprocess.SubprocessError, OSError) as exc:
             issues.append(f'Не удалось извлечь текст PDF {path}: {exc}')
     return issues

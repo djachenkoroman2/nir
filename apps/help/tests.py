@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 from django.conf import settings
 from django.test import TestCase
@@ -11,11 +12,32 @@ from apps.staff.tests import make_editor, make_teacher
 from apps.students.test_cabinet import make_student_user
 from apps.students.tests import make_student, make_teacher_user
 
-from .content import COMMON_CHAPTERS, GUIDES, chapters_for, get_chapter, validate_content
+from .content import COMMON_CHAPTER_SLUGS, GUIDES, ROLE_COMMON, chapters_for, get_chapter, validate_content
 from .coverage import coverage_rows
-from .pdf import GENERATED_DIR, inspect_pdf
+from .guide_editor import DOMAINS
+from .pdf import GENERATED_DIR, inspect_pdf, pdf_text
 from .roles import accessible_guides, can_view_role, role_for_user
-from .screenshots import SCREENSHOTS
+from .screenshots import (
+    ROLE_DEMO_USERS, SCREENSHOTS, validate_capture_specs, validate_screenshot_registry,
+)
+
+
+def guide_text(role):
+    """Все авторские поля руководства для точных регрессионных проверок."""
+    values = []
+    for item in chapters_for(role):
+        values.extend((item.title, item.intro))
+        for scenario in item.scenarios:
+            values.extend((
+                scenario.title, scenario.goal, scenario.preconditions, *scenario.steps,
+                scenario.example, scenario.result, *scenario.errors, scenario.related,
+            ))
+    return '\n'.join(values)
+
+
+def scenario(role, chapter_slug, scenario_slug):
+    item = get_chapter(role, chapter_slug)
+    return next(value for value in item.scenarios if value.slug == scenario_slug)
 
 
 class HelpFixture(TestCase):
@@ -88,7 +110,111 @@ class ContentTests(TestCase):
             with self.subTest(role=role):
                 slugs = {item.slug for item in chapters_for(role)}
                 self.assertLessEqual(chapters, slugs)
-                self.assertEqual(COMMON_CHAPTERS, chapters_for(role)[:len(COMMON_CHAPTERS)])
+                common_slugs = tuple(item.slug for item in chapters_for(role)[:len(COMMON_CHAPTER_SLUGS)])
+                self.assertEqual(COMMON_CHAPTER_SLUGS, common_slugs)
+
+    def test_common_chapters_have_distinct_role_content(self):
+        self.assertEqual(set(ROLE_COMMON), set(GUIDES))
+        login_examples = set()
+        report_examples = set()
+        for role in GUIDES:
+            with self.subTest(role=role):
+                login = scenario(role, 'getting-started', 'login')
+                navigation = scenario(role, 'interface', 'navigation')
+                profile = scenario(role, 'account-and-documents', 'profile')
+                report = scenario(role, 'account-and-documents', 'reports-and-print')
+                using_help = scenario(role, 'account-and-documents', 'using-help')
+                self.assertEqual(login.example, ROLE_COMMON[role]['login_example'])
+                self.assertIn(f'логин {ROLE_DEMO_USERS[role]}', login.example)
+                self.assertEqual(report.example, ROLE_COMMON[role]['report_example'])
+                self.assertEqual(navigation.screenshot, f'{role}-navigation')
+                self.assertEqual(profile.screenshot, f'{role}-profile')
+                self.assertEqual(report.screenshot, f'{role}-report')
+                self.assertEqual(using_help.screenshot, f'{role}-help')
+                login_examples.add(login.example)
+                report_examples.add(report.example)
+        self.assertEqual(len(login_examples), len(GUIDES))
+        self.assertEqual(len(report_examples), len(GUIDES))
+
+    def test_known_cross_role_regressions_are_removed(self):
+        removed = (
+            'Для демонстрационной среды преподаватель вводит логин ivanov',
+            'Руководитель выбирает «Мои подопечные»',
+            'Исправьте адрес на ivanov@example.edu и проверьте, что тот же адрес отображается в связанной карточке преподавателя.',
+            'руководителя или подопечного',
+            'Вы вошли как редактор или администратор',
+            'У вас есть права редактора; пользователь только для просмотра',
+        )
+        for role in GUIDES:
+            text = guide_text(role)
+            for phrase in removed:
+                with self.subTest(role=role, phrase=phrase):
+                    self.assertNotIn(phrase, text)
+        reader_text = guide_text('reader')
+        for domain in DOMAINS:
+            with self.subTest(reader_domain=domain['slug']):
+                self.assertNotIn(domain['delete'], reader_text)
+
+    def test_editorial_roles_have_target_preconditions_and_screenshots(self):
+        role_titles = {'admin': 'администратор', 'editor': 'редактор'}
+        for role, title in role_titles.items():
+            for domain in DOMAINS:
+                with self.subTest(role=role, domain=domain['slug']):
+                    listing = scenario(role, domain['slug'], f"{domain['slug']}-list")
+                    managing = scenario(role, domain['slug'], f"{domain['slug']}-manage")
+                    self.assertEqual(
+                        listing.preconditions,
+                        f'Вы вошли как {title}; кабинетным ролям общий реестр закрыт.',
+                    )
+                    self.assertEqual(
+                        managing.preconditions,
+                        f'У вас есть права {title}а на изменение записей этого раздела.' if title == 'редактор'
+                        else 'У вас есть права администратора на изменение записей этого раздела.',
+                    )
+            self.assertEqual(
+                scenario(role, 'reports', 'person-reports').screenshot,
+                f'{role}-person-report',
+            )
+            self.assertEqual(
+                scenario(role, 'reports', 'cards-and-account').screenshot,
+                f'{role}-account',
+            )
+
+    def test_cabinet_publication_examples_are_specific(self):
+        expected = {
+            'teacher': ('teacher-publications', 'Метод анализа устойчивости сети', 'подопечного курсанта'),
+            'adjunct': ('adjunct-publications', 'Модель обработки экспериментальных данных', 'научного руководителя'),
+            'student': ('student-publications', 'Анализ защищённости учебной сети', 'научного руководителя'),
+        }
+        examples = set()
+        for role, (chapter_slug, title, coauthor) in expected.items():
+            with self.subTest(role=role):
+                example = scenario(role, chapter_slug, 'publication-create').example
+                self.assertIn(title, example)
+                self.assertIn(coauthor, example)
+                self.assertNotIn('руководителя или подопечного', example)
+                examples.add(example)
+        self.assertEqual(len(examples), 3)
+
+    def test_screenshot_audience_and_capture_users(self):
+        self.assertEqual(validate_screenshot_registry(), [])
+        specs = []
+        for key, shot in SCREENSHOTS.items():
+            with self.subTest(key=key):
+                if len(shot.roles) == 1:
+                    role = shot.roles[0]
+                    self.assertEqual(shot.captured_by, ROLE_DEMO_USERS[role])
+                if not shot.roles:
+                    self.assertEqual(key, 'common-login')
+                    self.assertEqual(shot.captured_by, '')
+            specs.append(SimpleNamespace(key=key, user=shot.captured_by))
+        self.assertEqual(validate_capture_specs(specs), [])
+        wrong_specs = [
+            SimpleNamespace(key=spec.key, user='ivanov' if spec.key == 'student-help' else spec.user)
+            for spec in specs
+        ]
+        errors = validate_capture_specs(wrong_specs)
+        self.assertTrue(any('student-help' in error and 'ожидается' in error for error in errors))
 
     def test_coverage_matrix_links_every_scenario_to_url_and_tests(self):
         rows = coverage_rows()
@@ -108,7 +234,7 @@ class ContentTests(TestCase):
 
     def test_all_images_exist_and_have_metadata(self):
         root = Path(settings.BASE_DIR) / 'static' / 'help' / 'images'
-        self.assertEqual(len(SCREENSHOTS), 60)
+        self.assertEqual(len(SCREENSHOTS), 84)
         for key, shot in SCREENSHOTS.items():
             with self.subTest(key=key):
                 path = root / shot.filename
@@ -124,8 +250,17 @@ class ContentTests(TestCase):
         for role, guide in GUIDES.items():
             with self.subTest(role=role):
                 path = GENERATED_DIR / f'{role}.pdf'
-                self.assertEqual(inspect_pdf(path, guide, chapters_for(role)), [])
+                chapters = chapters_for(role)
+                self.assertEqual(inspect_pdf(path, guide, chapters), [])
                 self.assertGreater((GENERATED_DIR / f'{role}.pdf').stat().st_size, 100_000)
+                text = pdf_text(path)
+                if text is not None:
+                    self.assertIn(' '.join(ROLE_COMMON[role]['report_example'].split()), text)
+                    self.assertNotIn('Для демонстрационной среды преподаватель вводит логин ivanov', text)
+                    self.assertNotIn('руководителя или подопечного', text)
+                    if role == 'reader':
+                        for domain in DOMAINS:
+                            self.assertNotIn(' '.join(domain['delete'].split()), text)
 
 
 class PageTests(HelpFixture):
@@ -137,7 +272,7 @@ class PageTests(HelpFixture):
                 self.assertRedirects(self.client.get(url), f'{reverse("login")}?next={url}')
 
     def test_own_pages_and_cabinet_whitelist(self):
-        first_chapter = COMMON_CHAPTERS[0].slug
+        first_chapter = COMMON_CHAPTER_SLUGS[0]
         for role, user in self.users.items():
             self.client.force_login(user)
             for url in (reverse('help:index'), reverse('help:guide', args=[role]),
@@ -184,6 +319,14 @@ class PageTests(HelpFixture):
                         self.assertContains(response, f'id="{scenario.slug}"')
                         self.assertContains(response, scenario.image.static_path)
                         self.assertContains(response, scenario.image.alt)
+                        self.assertContains(response, scenario.goal)
+                        self.assertContains(response, scenario.preconditions)
+                        self.assertContains(response, scenario.example)
+                        self.assertContains(response, scenario.result)
+                        for value in (*scenario.steps, *scenario.errors):
+                            self.assertContains(response, value)
+                        if scenario.related:
+                            self.assertContains(response, scenario.related)
                     self.assertContains(response, reverse('help:pdf', args=[role]))
 
     def test_unknown_material_is_404(self):

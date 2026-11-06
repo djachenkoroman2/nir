@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from django.http import Http404
 
-from .screenshots import SCREENSHOTS
+from .screenshots import SCREENSHOTS, validate_screenshot_registry
 
 
 @dataclass(frozen=True)
@@ -51,8 +51,10 @@ def chapter(slug, title, intro, *scenarios):
 
 
 # Импорты размещены после конструкторов: модули глав используют chapter() и s().
-from .guide_common import COMMON_CHAPTERS as COMMON_CHAPTERS
-from .guide_editor import ADMIN_EXTRA_CHAPTERS, EDITOR_CHAPTERS
+from .guide_common import COMMON_CHAPTER_SLUGS as COMMON_CHAPTER_SLUGS
+from .guide_common import ROLE_COMMON as ROLE_COMMON
+from .guide_common import common_chapters
+from .guide_editor import ADMIN_EXTRA_CHAPTERS, editorial_chapters
 from .guide_cabinets import ADJUNCT_CHAPTERS, STUDENT_CHAPTERS, TEACHER_CHAPTERS
 from .guide_reader import READER_CHAPTERS
 
@@ -81,8 +83,8 @@ GUIDES = {
 }
 
 ROLE_CHAPTERS = {
-    'admin': (*EDITOR_CHAPTERS, *ADMIN_EXTRA_CHAPTERS),
-    'editor': EDITOR_CHAPTERS,
+    'admin': (*editorial_chapters('admin'), *ADMIN_EXTRA_CHAPTERS),
+    'editor': editorial_chapters('editor'),
     'teacher': TEACHER_CHAPTERS,
     'adjunct': ADJUNCT_CHAPTERS,
     'student': STUDENT_CHAPTERS,
@@ -91,10 +93,10 @@ ROLE_CHAPTERS = {
 
 
 def chapters_for(role):
-    """Полное самостоятельное руководство: общие главы, затем главы роли."""
+    """Полное самостоятельное руководство: ролевые варианты общих глав, затем главы роли."""
     if role not in GUIDES:
         raise Http404('Раздел справки не найден')
-    return (*COMMON_CHAPTERS, *ROLE_CHAPTERS[role])
+    return (*common_chapters(role), *ROLE_CHAPTERS[role])
 
 
 def get_chapter(role, slug):
@@ -113,15 +115,20 @@ def chapter_neighbours(role, current):
 
 
 def validate_content():
-    """Ошибки авторской сборки выявляются тестами и командой сборки PDF."""
-    errors = []
+    """Ошибки авторской сборки и ролевой аудитории выявляются тестами и сборкой PDF."""
+    errors = list(validate_screenshot_registry())
     if set(GUIDES) != set(ROLE_CHAPTERS):
         errors.append('Набор ролей и набор глав не совпадает')
+    if set(GUIDES) != set(ROLE_COMMON):
+        errors.append('Набор ролей и ролевых вариантов общих глав не совпадает')
     for role in GUIDES:
-        slugs = [item.slug for item in chapters_for(role)]
+        chapters = chapters_for(role)
+        slugs = [item.slug for item in chapters]
         if len(slugs) != len(set(slugs)):
             errors.append(f'{role}: повторяются slug глав')
-        for item in chapters_for(role):
+        if tuple(slugs[:len(COMMON_CHAPTER_SLUGS)]) != COMMON_CHAPTER_SLUGS:
+            errors.append(f'{role}: отсутствуют или изменён порядок обязательных общих глав')
+        for item in chapters:
             if not item.scenarios:
                 errors.append(f'{role}/{item.slug}: нет сценариев')
             scenario_slugs = [scenario.slug for scenario in item.scenarios]
@@ -131,6 +138,15 @@ def validate_content():
                 values = (scenario.goal, scenario.preconditions, scenario.example, scenario.result)
                 if not all(values) or len(scenario.steps) < 2 or not scenario.errors:
                     errors.append(f'{role}/{item.slug}/{scenario.slug}: неполный сценарий')
+                if not all(scenario.steps) or not all(scenario.errors):
+                    errors.append(f'{role}/{item.slug}/{scenario.slug}: пустой шаг или ограничение')
                 if scenario.screenshot not in SCREENSHOTS:
                     errors.append(f'{role}/{item.slug}/{scenario.slug}: неизвестный скриншот')
+                    continue
+                audience = SCREENSHOTS[scenario.screenshot].roles
+                if audience and role not in audience:
+                    errors.append(
+                        f'{role}/{item.slug}/{scenario.slug}: снимок {scenario.screenshot} '
+                        f'предназначен для {audience}'
+                    )
     return errors

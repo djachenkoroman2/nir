@@ -17,7 +17,8 @@ from apps.accounts.models import User
 from apps.adjuncts.models import Task
 from apps.conferences.models import Conference
 from apps.help.capture import Shot, WebDriver, WebDriverError
-from apps.help.screenshots import SCREENSHOTS
+from apps.help.screenshots import SCREENSHOTS, validate_capture_specs
+from apps.reports.access import form16_url
 from apps.schools.models import ScientificSchool
 from apps.staff.models import Teacher
 
@@ -35,6 +36,24 @@ def _list(key, user, url):
 
 def _form(key, user, url, authors=False):
     return Shot(key, user, url, AUTHOR_SELECTORS if authors else FORM_SELECTORS, height=1800 if authors else 1600)
+
+
+def _role_common_specs(role, user, home_url, report_url):
+    """Снимки общих по теме, но не по интерфейсу глав для конкретной роли."""
+    report_selectors = (
+        ('main table|main .bg-white', 'a[href*="format=docx"]', 'button[onclick*="print"]')
+        if role == 'reader' else
+        ('main form', 'main button[type="submit"]', 'a[href*="format=docx"]|main .btn')
+    )
+    return (
+        Shot(f'{role}-navigation', user, home_url,
+             ('.navbar', 'main .row|main .card', 'a[href^="/help/"]'), 'body', 1250),
+        Shot(f'{role}-help', user, reverse('help:guide', args=[role]),
+             ('main h1', 'a[href$="/pdf/"]', 'main .list-group-item:first-child'), 'main', 1400),
+        Shot(f'{role}-profile', user, reverse('core:profile_edit'),
+             ('main form .row|main form', 'main button[type="submit"]'), 'main', 1100),
+        Shot(f'{role}-report', user, report_url, report_selectors, 'main', 1400),
+    )
 
 
 def make_specs():
@@ -92,10 +111,6 @@ def make_specs():
              ('main form .field-last_name|main form', 'main form .field-user', 'main form .submit-row'), 'main', 1500),
         Shot('admin-activity', 'admin', reverse('reports:activity'),
              ('main form', 'main form input[type="checkbox"]|main form', 'main table'), height=1400),
-        Shot('common-home', 'editor', reverse('core:home'),
-             ('.navbar', 'main .row', 'a[href^="/help/"]'), 'body', 1100),
-        Shot('common-help', 'editor', reverse('help:guide', args=['editor']),
-             ('main h1', 'a[href$="/pdf/"]', 'main .list-group'), 'main', 1400),
         Shot('teacher-cabinet', 'ivanov', teacher.get_absolute_url(),
              ('a[href="/publications/add/"]', 'main .card', 'a[href$="#supervision"]'), 'main', 1400),
         _form('teacher-publication-form', 'ivanov', reverse('publications:publication_create'), True),
@@ -110,8 +125,6 @@ def make_specs():
              ('form[action$="/status/"]|main .btn-group', 'main .card', 'textarea'), height=1400),
         Shot('teacher-reports', 'ivanov', reverse('reports:report_list'),
              ('main .card', 'a[href*="/reports/supervision"]', 'main h1'), height=1300),
-        Shot('common-report', 'ivanov', reverse('reports:form16_own'),
-             ('main form', 'button[type="submit"]', 'a[href*="format=docx"]|main .btn'), height=1400),
         Shot('adjunct-cabinet', 'adjunct1', adjunct.get_absolute_url(),
              ('a[href="/publications/add/"]', 'main .card', '.nav-pills'), 'main', 1400),
         _form('adjunct-publication-form', 'adjunct1', reverse('publications:publication_create'), True),
@@ -143,9 +156,33 @@ def make_specs():
              ('main dl', 'main .card', 'main h1'), height=1300),
         Shot('reader-reports', 'reader', reverse('reports:report_list'),
              ('main .card|main', 'a[href="/reports/account/"]|main', 'main h1'), height=1100),
-        Shot('common-profile', 'reader', reverse('core:profile_edit'),
-             ('main form .row|main form', 'button[type="submit"]'), height=1100),
     ]
+    common_homes = {
+        'admin': reverse('core:home'),
+        'editor': reverse('core:home'),
+        'teacher': teacher.get_absolute_url(),
+        'adjunct': adjunct.get_absolute_url(),
+        'student': student.get_absolute_url(),
+        'reader': reverse('core:home'),
+    }
+    common_reports = {
+        'admin': reverse('reports:department'),
+        'editor': reverse('reports:department'),
+        'teacher': reverse('reports:form16_own'),
+        'adjunct': reverse('reports:form16_own'),
+        'student': reverse('reports:form16_own'),
+        'reader': reverse('reports:account'),
+    }
+    for role, user in (('admin', 'admin'), ('editor', 'editor'), ('teacher', 'ivanov'),
+                       ('adjunct', 'adjunct1'), ('student', 'student1'), ('reader', 'reader')):
+        specs.extend(_role_common_specs(role, user, common_homes[role], common_reports[role]))
+    for role, user in (('admin', 'admin'), ('editor', 'editor')):
+        specs.extend((
+            Shot(f'{role}-person-report', user, form16_url(teacher),
+                 ('main form', 'main button[type="submit"]', 'a[href*="format=docx"]|main .btn'), 'main', 1400),
+            Shot(f'{role}-account', user, reverse('reports:account'),
+                 ('main table|main .bg-white', 'a[href*="format=docx"]', 'button[onclick*="print"]'), 'main', 1200),
+        ))
     return specs
 
 
@@ -191,11 +228,10 @@ class Command(BaseCommand):
         self.stdout.write(f'Временная база: {db_path}')
         self._prepare_database(db_path, options['seed'])
         specs = make_specs()
+        spec_errors = validate_capture_specs(specs)
+        if spec_errors:
+            raise CommandError('Карта снимков не совпадает с реестром:\n' + '\n'.join(spec_errors))
         by_key = {shot.key: shot for shot in specs}
-        missing = set(SCREENSHOTS) - set(by_key)
-        extra = set(by_key) - set(SCREENSHOTS)
-        if missing or extra:
-            raise CommandError(f'Карта снимков не совпадает с реестром: нет {sorted(missing)}, лишние {sorted(extra)}')
         if options['only']:
             selected = [key.strip() for key in options['only'].split(',') if key.strip()]
             unknown = set(selected) - set(by_key)
