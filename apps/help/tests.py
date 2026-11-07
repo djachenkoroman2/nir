@@ -15,6 +15,7 @@ from apps.students.tests import make_student, make_teacher_user
 from .content import COMMON_CHAPTER_SLUGS, GUIDES, ROLE_COMMON, chapters_for, get_chapter, validate_content
 from .coverage import coverage_rows
 from .guide_editor import DOMAINS
+from .language import NON_ADMIN_ROLES, TECHNICAL_PATTERNS, technical_terms
 from .pdf import GENERATED_DIR, inspect_pdf, pdf_text
 from .roles import accessible_guides, can_view_role, role_for_user
 from .screenshots import (
@@ -32,6 +33,8 @@ def guide_text(role):
                 scenario.title, scenario.goal, scenario.preconditions, *scenario.steps,
                 scenario.example, scenario.result, *scenario.errors, scenario.related,
             ))
+            shot = scenario.image
+            values.extend((shot.title, shot.alt, *shot.legend))
     return '\n'.join(values)
 
 
@@ -155,6 +158,48 @@ class ContentTests(TestCase):
             with self.subTest(reader_domain=domain['slug']):
                 self.assertNotIn(domain['delete'], reader_text)
 
+    def test_non_admin_guides_use_plain_language(self):
+        for role in NON_ADMIN_ROLES:
+            with self.subTest(role=role):
+                self.assertEqual(technical_terms(guide_text(role)), [])
+
+    def test_technical_language_detector_and_domain_allowances(self):
+        sample = (
+            'POST GET HTTP 403 404 is_staff is_superuser activity.view_activity_report '
+            '?then=report all=1 /add/ /edit/ /delete/ Django ORM middleware '
+            'числовой ID числовой идентификатор суперпользователь прямой адрес прямые URL'
+        )
+        self.assertEqual(len(technical_terms(sample)), len(TECHNICAL_PATTERNS))
+        allowed = 'DOI и ссылка (URL) на издание, PDF, DOCX, НИОКР, РИД, РИНЦ, ВАК, Scopus, WoS'
+        self.assertEqual(technical_terms(allowed), [])
+
+    def test_plain_language_preserves_user_actions(self):
+        for role in GUIDES:
+            with self.subTest(role=role, scenario='logout-and-access'):
+                steps = scenario(role, 'getting-started', 'logout-and-access').steps
+                self.assertEqual(steps[0], 'Для завершения работы нажмите «Выйти» в правой части шапки.')
+                self.assertIn('Если раздел недоступен вашей роли', steps[1])
+                self.assertIn('обратитесь к администратору', steps[1])
+                self.assertIn('Если запись не найдена или недоступна', steps[2])
+                self.assertIn('вернитесь к своему списку', steps[2])
+        conference_chapters = {
+            'admin': 'conferences', 'editor': 'conferences', 'teacher': 'teacher-conferences',
+            'adjunct': 'adjunct-conferences', 'student': 'student-conferences',
+        }
+        for role, chapter_slug in conference_chapters.items():
+            with self.subTest(role=role, scenario='report-create'):
+                steps = scenario(role, chapter_slug, 'report-create').steps
+                self.assertIn('система вернёт вас к форме доклада', '\n'.join(steps))
+        for domain in DOMAINS:
+            with self.subTest(reader_domain=domain['slug']):
+                text = '\n'.join(scenario(
+                    'reader', f"reader-{domain['slug']}", f"{domain['slug']}-detail",
+                ).errors)
+                self.assertIn('сообщите редактору', text)
+        admin_text = guide_text('admin')
+        for required in ('is_staff', 'is_superuser', 'activity.view_activity_report', '403', '404'):
+            self.assertIn(required, admin_text)
+
     def test_editorial_roles_have_target_preconditions_and_screenshots(self):
         role_titles = {'admin': 'администратор', 'editor': 'редактор'}
         for role, title in role_titles.items():
@@ -175,10 +220,14 @@ class ContentTests(TestCase):
                 scenario(role, 'reports', 'person-reports').screenshot,
                 f'{role}-person-report',
             )
-            self.assertEqual(
-                scenario(role, 'reports', 'cards-and-account').screenshot,
-                f'{role}-account',
-            )
+            cards = scenario(role, 'reports', 'cards-and-account')
+            self.assertEqual(cards.screenshot, f'{role}-account')
+            if role == 'admin':
+                self.assertIn('вы можете открывать и другие учётные записи', cards.preconditions)
+                self.assertIn('откройте из журнала активности', cards.steps[-1])
+            else:
+                self.assertIn('вам доступна собственная учётная запись', cards.preconditions)
+                self.assertIn('других учётных записей вашей роли недоступны', cards.steps[-1])
 
     def test_cabinet_publication_examples_are_specific(self):
         expected = {
@@ -258,6 +307,8 @@ class ContentTests(TestCase):
                     self.assertIn(' '.join(ROLE_COMMON[role]['report_example'].split()), text)
                     self.assertNotIn('Для демонстрационной среды преподаватель вводит логин ivanov', text)
                     self.assertNotIn('руководителя или подопечного', text)
+                    if role != 'admin':
+                        self.assertEqual(technical_terms(text), [])
                     if role == 'reader':
                         for domain in DOMAINS:
                             self.assertNotIn(' '.join(domain['delete'].split()), text)

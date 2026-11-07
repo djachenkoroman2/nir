@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from django.http import Http404
 
+from .language import technical_terms
 from .screenshots import SCREENSHOTS, validate_screenshot_registry
 
 
@@ -121,7 +122,17 @@ def validate_content():
         errors.append('Набор ролей и набор глав не совпадает')
     if set(GUIDES) != set(ROLE_COMMON):
         errors.append('Набор ролей и ролевых вариантов общих глав не совпадает')
+
+    def check_language(role, location, values):
+        if role == 'admin':
+            return
+        terms = technical_terms('\n'.join(values))
+        if terms:
+            errors.append(f'{location}: технические сведения для неадминистратора: {", ".join(terms)}')
+
     for role in GUIDES:
+        guide = GUIDES[role]
+        check_language(role, f'{role}: описание руководства', (guide.title, guide.manual_title, guide.description))
         chapters = chapters_for(role)
         slugs = [item.slug for item in chapters]
         if len(slugs) != len(set(slugs)):
@@ -129,6 +140,7 @@ def validate_content():
         if tuple(slugs[:len(COMMON_CHAPTER_SLUGS)]) != COMMON_CHAPTER_SLUGS:
             errors.append(f'{role}: отсутствуют или изменён порядок обязательных общих глав')
         for item in chapters:
+            check_language(role, f'{role}/{item.slug}: глава', (item.title, item.intro))
             if not item.scenarios:
                 errors.append(f'{role}/{item.slug}: нет сценариев')
             scenario_slugs = [scenario.slug for scenario in item.scenarios]
@@ -136,6 +148,10 @@ def validate_content():
                 errors.append(f'{role}/{item.slug}: повторяются slug сценариев')
             for scenario in item.scenarios:
                 values = (scenario.goal, scenario.preconditions, scenario.example, scenario.result)
+                check_language(
+                    role, f'{role}/{item.slug}/{scenario.slug}',
+                    (scenario.title, *values, *scenario.steps, *scenario.errors, scenario.related),
+                )
                 if not all(values) or len(scenario.steps) < 2 or not scenario.errors:
                     errors.append(f'{role}/{item.slug}/{scenario.slug}: неполный сценарий')
                 if not all(scenario.steps) or not all(scenario.errors):
@@ -143,7 +159,12 @@ def validate_content():
                 if scenario.screenshot not in SCREENSHOTS:
                     errors.append(f'{role}/{item.slug}/{scenario.slug}: неизвестный скриншот')
                     continue
-                audience = SCREENSHOTS[scenario.screenshot].roles
+                shot = SCREENSHOTS[scenario.screenshot]
+                check_language(
+                    role, f'{role}/{item.slug}/{scenario.slug}: подпись снимка',
+                    (shot.title, shot.alt, *shot.legend),
+                )
+                audience = shot.roles
                 if audience and role not in audience:
                     errors.append(
                         f'{role}/{item.slug}/{scenario.slug}: снимок {scenario.screenshot} '
